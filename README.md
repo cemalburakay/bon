@@ -58,6 +58,7 @@ Sampling settings use temperature `0`, top-k `1`, and a fixed seed. This is dete
 ## Guides and project policies
 
 - [Setup guide](SETUP-GUIDE.md)
+- [Source-only rebuild and GPU smoke evidence](CLEAN-INSTALL-REPORT.md)
 - [User guide](USER-GUIDE.md)
 - [Privacy and data flow](PRIVACY.md)
 - [Changelog](CHANGELOG.md)

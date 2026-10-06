@@ -38,6 +38,8 @@ In a fresh clone, run the same `setup-repo.cmd`; no downloaded directory should 
 
 Setup and Bon default to repository-local download, virtualenv, and Hugging Face/Xet caches under `tools/.downloads/`. Explicit `HF_HOME`, `HF_HUB_CACHE`, or `HF_XET_CACHE` environment overrides remain supported. Python runs with bytecode writes disabled, and pip installs with `--no-compile`. A rebuild still depends on upstream download availability, the OS prerequisites, and compatible hardware; testing a source-only checkout does not certify all new PCs.
 
+See the [source-only rebuild and GPU smoke report](CLEAN-INSTALL-REPORT.md) for the tested procedure, results, and limits.
+
 ## Optional model
 
 After setup, fetch the larger variant when desired:
