@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "layout": {
+    "download_dir": ".downloads",
+    "python_dir": "python",
+    "runtime_dir": "prism-cuda",
+    "model_dir": "bonsai_env",
+    "instructions_dir": ".instructions",
+    "scripts_dir": "scripts"
+  },
+  "python": {
+    "version": "3.13.16",
+    "embedded_archive": "python-3.13.16-embed-amd64.zip",
+    "stdlib_archive": "python313.zip",
+    "pth_file": "python313._pth",
+    "sha256": "97dae5274cc54867065e8d5a3226e48c35017ed332a0fdb0e27d5b5821961297"
+  },
+  "pip": {
+    "version": "26.2.1",
+    "wheel": "pip-26.2.1-py3-none-any.whl",
+    "archive_name": "pip-26.2.1-py3-none-any.zip",
+    "sha256": "71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e"
+  },
+  "python_packages": [
+    { "name": "huggingface_hub", "version": "1.32.0" },
+    { "name": "anyio", "version": "4.15.1" },
+    { "name": "certifi", "version": "2026.7.22" },
+    { "name": "click", "version": "8.5.0" },
+    { "name": "colorama", "version": "0.4.6" },
+    { "name": "filelock", "version": "4.0.12" },
+    { "name": "fsspec", "version": "2026.9.0" },
+    { "name": "h11", "version": "0.16.0" },
+    { "name": "hf-xet", "version": "1.6.0" },
+    { "name": "httpcore", "version": "1.0.9" },
+    { "name": "httpx", "version": "0.28.1" },
+    { "name": "idna", "version": "3.20" },
+    { "name": "packaging", "version": "26.3" },
+    { "name": "PyYAML", "version": "6.0.3" },
+    { "name": "tqdm", "version": "4.70.1" },
+    { "name": "typing-extensions", "version": "4.16.0" }
+  ],
+  "runtime": {
+    "repository": "PrismML-Eng/llama.cpp",
+    "release": "prism-b10709-9a9394a",
+    "cuda_version": "12.4",
+    "server_executable": "llama-server.exe",
+    "version_contains": "build 10709, commit 9a9394a89",
+    "archives": [
+      {
+        "filename": "llama-prism-b10709-9a9394a-bin-win-cuda-12.4-x64.zip",
+        "sha256": "F565C8428C1F108311F65ED97F02425188B3AA3C745C2BC597521BBD24BCBBC9"
+      },
+      {
+        "filename": "cudart-llama-bin-win-cuda-12.4-x64.zip",
+        "sha256": "8C79A9B226DE4B3CACFD1F83D24F962D0773BE79F1E7B75C6AF4DED7E32AE1D6"
+      }
+    ]
+  },
+  "models": {
+    "default": "bn15",
+    "tags": {
+      "bn15": {
+        "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+        "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+        "file": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+        "size": 5946648928,
+        "label": "PTQ1_0 1.75 bpw (~5.54 GiB)"
+      },
+      "bn17": {
+        "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+        "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+        "file": "Ternary-Bonsai-2-27B-PQ2_0.gguf",
+        "size": 7206168928,
+        "label": "PQ2_0 2.13 bpw (~6.71 GiB)"
+      }
+    },
+    "runtime": {
+      "bn15": { "kv": "f16", "ubatch": 256, "context": 262144 },
+      "bn17": { "kv": "q4_0", "ubatch": 512, "context": 262144 }
+    }
+  }
+}

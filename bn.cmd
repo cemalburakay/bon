@@ -14,8 +14,8 @@ set "PYTHONUTF8=1"
 set "PYTHONUNBUFFERED=1"
 set "PYTHONDONTWRITEBYTECODE=1"
 
-if not exist "%BN_ROOT%\bn.py" (
-    echo [ERROR] bn.py was not found in "%BN_ROOT%".
+if not exist "%BN_ROOT%\scripts\bn.py" (
+    echo [ERROR] scripts\bn.py was not found in "%BN_ROOT%".
     set "BN_EXIT=2"
     goto :finish
 )
@@ -29,7 +29,7 @@ if not exist "%BN_PYTHON%" (
 )
 
 echo Starting Bonsai REPL with repo-local Python...
-"%BN_PYTHON%" "%BN_ROOT%\bn.py" %*
+"%BN_PYTHON%" "%BN_ROOT%\scripts\bn.py" %*
 set "BN_EXIT=%ERRORLEVEL%"
 
 :finish

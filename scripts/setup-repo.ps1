@@ -10,25 +10,29 @@ $env:PYTHONDONTWRITEBYTECODE = '1'
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $ToolsRoot = Join-Path $RepoRoot 'tools'
-$DownloadRoot = Join-Path $ToolsRoot 'downloads'
-$PythonRoot = Join-Path $RepoRoot '.venv'
+$ToolLockPath = Join-Path $ToolsRoot 'tool-lock.json'
+try {
+    $ToolLock = Get-Content -LiteralPath $ToolLockPath -Raw -Encoding UTF8 | ConvertFrom-Json
+} catch {
+    [Console]::Error.WriteLine("[ERROR] Could not read tool lock: $ToolLockPath ($($_.Exception.Message))")
+    exit 1
+}
+$DownloadRoot = Join-Path $ToolsRoot $ToolLock.layout.download_dir
+$PythonRoot = Join-Path $ToolsRoot $ToolLock.layout.python_dir
 $PythonExe = Join-Path $PythonRoot 'python.exe'
-$PrismRoot = Join-Path $ToolsRoot 'prism-cuda'
-$PrismServer = Join-Path $PrismRoot 'llama-server.exe'
-$RequirementsFile = Join-Path $RepoRoot 'requirements.txt'
-$PythonVersion = '3.13.16'
-$PythonArchiveName = "python-$PythonVersion-embed-amd64.zip"
+$VenvRoot = Join-Path $RepoRoot '.venv'
+$PrismRoot = Join-Path $ToolsRoot $ToolLock.layout.runtime_dir
+$PrismServer = Join-Path $PrismRoot $ToolLock.runtime.server_executable
+$PythonVersion = $ToolLock.python.version
+$PythonArchiveName = $ToolLock.python.embedded_archive
 $PythonArchiveUrl = "https://www.python.org/ftp/python/$PythonVersion/$PythonArchiveName"
-$PythonArchiveSha256 = '97dae5274cc54867065e8d5a3226e48c35017ed332a0fdb0e27d5b5821961297'
-$PipVersion = '26.2.1'
-$PipArchiveName = "pip-$PipVersion-py3-none-any.zip"
-$PipArchiveSha256 = '71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e'
-$PrismRelease = 'prism-b10709-9a9394a'
-$PrismReleaseUrl = "https://github.com/PrismML-Eng/llama.cpp/releases/download/$PrismRelease"
-$PrismArchiveName = 'llama-prism-b10709-9a9394a-bin-win-cuda-12.4-x64.zip'
-$PrismArchiveSha256 = 'F565C8428C1F108311F65ED97F02425188B3AA3C745C2BC597521BBD24BCBBC9'
-$CudaArchiveName = 'cudart-llama-bin-win-cuda-12.4-x64.zip'
-$CudaArchiveSha256 = '8C79A9B226DE4B3CACFD1F83D24F962D0773BE79F1E7B75C6AF4DED7E32AE1D6'
+$PythonArchiveSha256 = $ToolLock.python.sha256
+$PipVersion = $ToolLock.pip.version
+$PipArchiveName = $ToolLock.pip.archive_name
+$PipWheelName = $ToolLock.pip.wheel
+$PipArchiveSha256 = $ToolLock.pip.sha256
+$PrismRelease = $ToolLock.runtime.release
+$PrismReleaseUrl = "https://github.com/$($ToolLock.runtime.repository)/releases/download/$PrismRelease"
 
 function Get-Sha256 {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -113,13 +117,18 @@ try {
     if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
         throw 'This setup currently requires 64-bit Windows.'
     }
-    foreach ($RequiredFile in @('bn.py', 'bn.cmd', 'requirements.txt')) {
+    foreach ($RequiredFile in @('bn.cmd', 'setup-repo.cmd', 'tools\tool-lock.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot $RequiredFile) -PathType Leaf)) {
             throw "Required source file is missing: $RequiredFile"
         }
     }
-    if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot '.instructions\bn-instructions.md') -PathType Leaf)) {
-        throw 'Required system instructions are missing: .instructions\bn-instructions.md'
+    $BnSourceFile = Join-Path (Join-Path $RepoRoot $ToolLock.layout.scripts_dir) 'bn.py'
+    if (-not (Test-Path -LiteralPath $BnSourceFile -PathType Leaf)) {
+        throw "Required application source is missing: $BnSourceFile"
+    }
+    $InstructionsPath = Join-Path (Join-Path $RepoRoot $ToolLock.layout.instructions_dir) 'bn-instructions.md'
+    if (-not (Test-Path -LiteralPath $InstructionsPath -PathType Leaf)) {
+        throw "Required system instructions are missing: $InstructionsPath"
     }
 
     $DriveRoot = [IO.Path]::GetPathRoot($RepoRoot)
@@ -128,7 +137,8 @@ try {
         throw ('At least 9 GiB of free space is recommended; {0:N2} GiB is available.' -f ($FreeBytes / 1GB))
     }
 
-    New-Item -ItemType Directory -Path $ToolsRoot, $DownloadRoot, $PythonRoot, $PrismRoot, (Join-Path $RepoRoot 'bonsai_env') -Force | Out-Null
+    $ModelRoot = Join-Path $RepoRoot $ToolLock.layout.model_dir
+    New-Item -ItemType Directory -Path $ToolsRoot, $DownloadRoot, $PythonRoot, $PrismRoot, $ModelRoot -Force | Out-Null
 
     $PythonVersionText = ''
     if (Test-Path -LiteralPath $PythonExe -PathType Leaf) {
@@ -144,8 +154,8 @@ try {
         throw "The embedded Python archive did not create the expected interpreter: $PythonExe"
     }
 
-    $PythonPth = Join-Path $PythonRoot 'python313._pth'
-    $PythonStdlib = Join-Path $PythonRoot 'python313.zip'
+    $PythonPth = Join-Path $PythonRoot $ToolLock.python.pth_file
+    $PythonStdlib = Join-Path $PythonRoot $ToolLock.python.stdlib_archive
     if (-not (Test-Path -LiteralPath $PythonPth -PathType Leaf) -or -not (Test-Path -LiteralPath $PythonStdlib -PathType Leaf)) {
         throw 'The embedded Python archive is missing its expected path configuration or standard library.'
     }
@@ -170,7 +180,7 @@ try {
     $PipMetadataDirectory = Join-Path $SitePackages "pip-$PipVersion.dist-info"
     if (-not (Test-Path -LiteralPath $PipMetadataDirectory -PathType Container)) {
         $PipMetadata = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/$PipVersion/json" -TimeoutSec 60
-        $PipWheel = $PipMetadata.urls | Where-Object { $_.filename -eq "pip-$PipVersion-py3-none-any.whl" } | Select-Object -First 1
+        $PipWheel = $PipMetadata.urls | Where-Object { $_.filename -eq $PipWheelName } | Select-Object -First 1
         if (-not $PipWheel -or $PipWheel.digests.sha256 -ne $PipArchiveSha256) {
             throw 'The pinned pip wheel metadata did not match its expected SHA-256.'
         }
@@ -190,7 +200,8 @@ try {
     Write-Host 'Checking the pinned Python dependency set ...'
     $PreviousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    & $PythonExe -m pip install --disable-pip-version-check --requirement $RequirementsFile
+    $PackageSpecs = @($ToolLock.python_packages | ForEach-Object { "$($_.name)==$($_.version)" })
+    & $PythonExe -m pip install --disable-pip-version-check @PackageSpecs
     $PipExitCode = $LASTEXITCODE
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($PipExitCode -ne 0) { throw "Python package installation failed with exit code $PipExitCode." }
@@ -212,9 +223,11 @@ try {
         $PrismExitCode = 1
     }
     $ErrorActionPreference = $PreviousErrorActionPreference
-    if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch 'build 10709, commit 9a9394a89') {
-        $PrismArchive = Get-VerifiedAsset -Name $PrismArchiveName -Uri "$PrismReleaseUrl/$PrismArchiveName" -ExpectedSha256 $PrismArchiveSha256
-        $CudaArchive = Get-VerifiedAsset -Name $CudaArchiveName -Uri "$PrismReleaseUrl/$CudaArchiveName" -ExpectedSha256 $CudaArchiveSha256
+    if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch [regex]::Escape($ToolLock.runtime.version_contains)) {
+        $PrismBinaryLock = $ToolLock.runtime.archives[0]
+        $CudaRuntimeLock = $ToolLock.runtime.archives[1]
+        $PrismArchive = Get-VerifiedAsset -Name $PrismBinaryLock.filename -Uri "$PrismReleaseUrl/$($PrismBinaryLock.filename)" -ExpectedSha256 $PrismBinaryLock.sha256
+        $CudaArchive = Get-VerifiedAsset -Name $CudaRuntimeLock.filename -Uri "$PrismReleaseUrl/$($CudaRuntimeLock.filename)" -ExpectedSha256 $CudaRuntimeLock.sha256
         Expand-Archive -Path $PrismArchive -DestinationPath $PrismRoot -Force
         Expand-Archive -Path $CudaArchive -DestinationPath $PrismRoot -Force
         if (-not (Test-Path -LiteralPath $PrismServer -PathType Leaf)) {
@@ -224,7 +237,7 @@ try {
         $PrismVersion = (& $PrismServer --version 2>&1 | Out-String).Trim()
         $PrismExitCode = $LASTEXITCODE
         $ErrorActionPreference = $PreviousErrorActionPreference
-        if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch 'build 10709, commit 9a9394a89') {
+        if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch [regex]::Escape($ToolLock.runtime.version_contains)) {
             throw "The Prism runtime failed its version check: $PrismVersion"
         }
     } else {
@@ -241,14 +254,27 @@ try {
         Write-Warning "The Prism runtime did not report a CUDA device. The model can still run on CPU, but GPU acceleration may be unavailable. $DeviceList"
     }
 
-    $BnSourceFile = Join-Path $RepoRoot 'bn.py'
     $ConfiguredDefault = (& $PythonExe -c "import runpy,sys; print(runpy.run_path(sys.argv[1])['DEFAULT_MODEL_TAG'])" $BnSourceFile 2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $ConfiguredDefault -ne 'bn15') {
+    $DefaultModelTag = $ToolLock.models.default
+    if ($LASTEXITCODE -ne 0 -or $ConfiguredDefault -ne $DefaultModelTag -or $DefaultModelTag -ne 'bn15') {
         throw "The application default model must remain bn15; found '$ConfiguredDefault'."
     }
-    & $PythonExe (Join-Path $RepoRoot 'bn.py') pull bn15
+    & $PythonExe $BnSourceFile pull $DefaultModelTag
     if ($LASTEXITCODE -ne 0) {
-        throw "The default bn15 model download/verification failed with exit code $LASTEXITCODE."
+        throw "The default $DefaultModelTag model download/verification failed with exit code $LASTEXITCODE."
+    }
+
+    $VenvEntry = Get-Item -LiteralPath $VenvRoot -Force -ErrorAction SilentlyContinue
+    if ($VenvEntry) {
+        if (($VenvEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+            throw "The .venv path already exists and is not the managed tools/python junction: $VenvRoot"
+        }
+    } else {
+        New-Item -ItemType Junction -Path $VenvRoot -Target $PythonRoot | Out-Null
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $VenvRoot 'python.exe') -PathType Leaf) -or
+        -not (Test-Path -LiteralPath (Join-Path $VenvRoot 'Lib\site-packages\disable-bytecode.pth') -PathType Leaf)) {
+        throw 'The root .venv junction does not resolve to the configured tools/python runtime.'
     }
 
     if (-not $SkipPathRegistration) {

@@ -5,23 +5,22 @@ from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, quote_plus, urlsplit
 
-ROOT=Path(__file__).resolve().parent; WORK=ROOT/'bonsai_env'
-PRISM_SERVER=ROOT/'tools'/'prism-cuda'/'llama-server.exe'
-SERVER=PRISM_SERVER
-# Model tags exposed by the REPL. bn15 is installed by setup-repo; bn17 is opt-in.
-MODEL_SPECS={
-    'bn15': {'repo':'prism-ml/Ternary-Bonsai-2-27B-gguf','revision':'6ed5e12bf84b7a63069882c91dd9e9218647d17b','file':'Ternary-Bonsai-2-27B-PTQ1_0.gguf','size':5_946_648_928,'label':'PTQ1_0 1.75 bpw (~5.54 GiB)'},
-    'bn17': {'repo':'prism-ml/Ternary-Bonsai-2-27B-gguf','revision':'6ed5e12bf84b7a63069882c91dd9e9218647d17b','file':'Ternary-Bonsai-2-27B-PQ2_0.gguf','size':7_206_168_928,'label':'PQ2_0 2.13 bpw (~6.71 GiB)'},
-}
-DEFAULT_MODEL_TAG='bn15'; DEFAULT_PORT=8080; PORT=DEFAULT_PORT
+ROOT=Path(__file__).resolve().parent.parent
+TOOL_LOCK_FILE=ROOT/'tools'/'tool-lock.json'
+try:
+    TOOL_LOCK=json.loads(TOOL_LOCK_FILE.read_text(encoding='utf-8'))
+    MODEL_SPECS=TOOL_LOCK['models']['tags']
+    MODEL_RUNTIME=TOOL_LOCK['models']['runtime']
+    DEFAULT_MODEL_TAG=TOOL_LOCK['models']['default']
+    WORK=ROOT/TOOL_LOCK['layout']['model_dir']
+    SERVER=ROOT/'tools'/TOOL_LOCK['layout']['runtime_dir']/TOOL_LOCK['runtime']['server_executable']
+except (OSError,KeyError,TypeError,ValueError) as error:
+    raise SystemExit(f'[ERROR] Could not load the pinned tool lock: {TOOL_LOCK_FILE} ({error})')
+DEFAULT_PORT=8080; PORT=DEFAULT_PORT
 # bn15 keeps f16 KV (no quality-affecting KV quantization). PQ2_0 leaves
 # very little headroom on this 8 GiB GPU, so bn17 uses the measured q4_0 KV
 # path; the Prism runtime requires Flash Attention for that path.
-MODEL_RUNTIME={
-    'bn15':{'kv':'f16','ubatch':256,'context':262_144},
-    'bn17':{'kv':'q4_0','ubatch':512,'context':262_144},
-}
-INSTRUCTIONS_FILE=ROOT/'.instructions'/'bn-instructions.md'
+INSTRUCTIONS_FILE=ROOT/TOOL_LOCK['layout']['instructions_dir']/'bn-instructions.md'
 DETERMINISTIC_SEED=42
 def fail(m): raise SystemExit(f'\n[ERROR] {m}\n')
 # Performance mode: keep the model and KV cache on the GPU. A 262K context is
