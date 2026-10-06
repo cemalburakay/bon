@@ -1,0 +1,4 @@
+/tools/**
+/bonsai_env/**
+/__pycache__/
+*.py[cod]
