@@ -18,6 +18,7 @@ Notable changes to Bon are recorded here. This project has not made a tagged pub
 
 ### Changed
 
+- Prepared public source publication at `https://github.com/cemalburakay/bon`, retaining Git history and using `dev` as the default development branch; added clone/citation links.
 - Made setup fully unattended with a printed upstream terms notice; moved default Hugging Face/Xet and virtualenv caches into `tools/.downloads/` and disabled pip bytecode compilation.
 - Audited reachable Git history and pinned license records; corrected embedded Python and CodeQL license scope, preserved model/runtime notices, and replaced automatic MIT glob coverage with an explicit file list.
 - Standardized the product name, launch command, Python entrypoint, model tags, and instruction filenames as `Bon`/`bon`.

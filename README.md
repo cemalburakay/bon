@@ -1,5 +1,7 @@
 # Bon
 
+Source repository: [cemalburakay/bon](https://github.com/cemalburakay/bon). The default development branch is `dev`.
+
 Bon is a Windows-first command-line assistant for running a language model on your own computer. It wraps a pinned PrismML llama.cpp build, downloads the default Ternary-Bonsai 2 model into an ignored local directory, and gives you a small REPL with optional model-selected web search.
 
 Bon is an independent community application. It is not made, endorsed, or supported by Prism ML, Hugging Face, Qwen, NVIDIA, DuckDuckGo, or the llama.cpp maintainers. “Ternary-Bonsai” and the model names below identify upstream components; they are not Bon products.
@@ -28,6 +30,17 @@ Requirements: 64-bit Windows 11 with its built-in PowerShell/.NET tools, interne
 4. Run `bon` (or `bon.cmd` from this directory). To choose a model explicitly, use `bon run bon2:27b-5gb` or `bon run bon2:27b-7gb`.
 
 The default `bon2:27b-5gb` GGUF is about 5.95 GB and is downloaded from Hugging Face during setup. The optional `bon2:27b-7gb` model is about 7.21 GB and is not downloaded automatically; `bon run bon2:27b-7gb` downloads it on first use. Details are in [SETUP-GUIDE.md](SETUP-GUIDE.md).
+
+To get the tracked source:
+
+```powershell
+git clone --branch dev https://github.com/cemalburakay/bon.git
+cd bon
+.\setup-repo.cmd
+.\bon.cmd
+```
+
+The public repository contains source, scripts, and documentation, not downloaded models, Python environments, or vendor runtime binaries. No tagged software release is implied by publishing the repository.
 
 ## What Bon does at runtime
 

@@ -1,6 +1,8 @@
 cff-version: 1.2.0
 message: "If you use Bon, please cite it as software and cite the upstream model and runtime separately."
 title: "Bon"
+repository-code: "https://github.com/cemalburakay/bon"
+url: "https://github.com/cemalburakay/bon"
 authors:
   - family-names: "Ay"
     given-names: "Cemal Burak"

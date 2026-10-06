@@ -11,6 +11,11 @@ Plan for at least 9 GiB free on the repository drive for the minimum setup. The 
 ## Install
 
 1. Clone or copy the repository to a writable local directory. Do not add `.models/`, `.venv/`, or `tools/` to Git; they are ignored by design.
+
+   ```powershell
+   git clone --branch dev https://github.com/cemalburakay/bon.git
+   cd bon
+   ```
 2. In Windows Terminal or PowerShell, change to the repository root and run:
 
    ```powershell
