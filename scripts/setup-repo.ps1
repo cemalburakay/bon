@@ -5,6 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+$env:PYTHONDONTWRITEBYTECODE = '1'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
@@ -79,14 +80,6 @@ function Get-VerifiedAsset {
         [Parameter(Mandatory = $true)][string]$Uri,
         [Parameter(Mandatory = $true)][string]$ExpectedSha256
     )
-
-    $ExistingToolAsset = Join-Path $ToolsRoot $Name
-    if (Test-Path -LiteralPath $ExistingToolAsset -PathType Leaf) {
-        if ((Get-Sha256 -Path $ExistingToolAsset) -eq $ExpectedSha256.ToUpperInvariant()) {
-            return $ExistingToolAsset
-        }
-        Write-Warning "Ignoring a cached file with an unexpected checksum: $ExistingToolAsset"
-    }
 
     $DownloadedAsset = Join-Path $DownloadRoot $Name
     return Get-VerifiedDownload -Uri $Uri -Destination $DownloadedAsset -ExpectedSha256 $ExpectedSha256
@@ -167,6 +160,13 @@ try {
     }
 
     $SitePackages = Join-Path $PythonRoot 'Lib\site-packages'
+    New-Item -ItemType Directory -Path $SitePackages -Force | Out-Null
+    $BytecodePolicyFile = Join-Path $SitePackages 'disable-bytecode.pth'
+    [IO.File]::WriteAllText($BytecodePolicyFile, "import sys; sys.dont_write_bytecode = True`r`n", [Text.Encoding]::ASCII)
+    $BytecodeDisabled = (& $PythonExe -c "import sys; print(sys.dont_write_bytecode)" 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $BytecodeDisabled -ne 'True') {
+        throw 'The portable Python runtime did not disable bytecode writes.'
+    }
     $PipMetadataDirectory = Join-Path $SitePackages "pip-$PipVersion.dist-info"
     if (-not (Test-Path -LiteralPath $PipMetadataDirectory -PathType Container)) {
         $PipMetadata = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/$PipVersion/json" -TimeoutSec 60
@@ -175,7 +175,6 @@ try {
             throw 'The pinned pip wheel metadata did not match its expected SHA-256.'
         }
         $PipArchive = Get-VerifiedDownload -Uri $PipWheel.url -Destination (Join-Path $DownloadRoot $PipArchiveName) -ExpectedSha256 $PipArchiveSha256
-        New-Item -ItemType Directory -Path $SitePackages -Force | Out-Null
         Expand-Archive -Path $PipArchive -DestinationPath $SitePackages -Force
     }
 

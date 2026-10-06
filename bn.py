@@ -1,13 +1,13 @@
-import html as html_lib, json, os, re, shutil, socket, subprocess, sys, time, urllib.error, urllib.request, uuid
+import sys
+sys.dont_write_bytecode=True
+import html as html_lib, json, os, re, socket, subprocess, time, urllib.error, urllib.request, uuid
 from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, quote_plus, urlsplit
 
-ROOT=Path(__file__).resolve().parent; WORK=ROOT/'bonsai_env'; LLAMA=WORK/'llama.cpp'
-CUDA_BUILD=LLAMA/'build-cuda-ninja6'; CPU_BUILD=LLAMA/'build'
-BUILD=CUDA_BUILD if (CUDA_BUILD/'bin'/'llama-server.exe').exists() else CPU_BUILD
+ROOT=Path(__file__).resolve().parent; WORK=ROOT/'bonsai_env'
 PRISM_SERVER=ROOT/'tools'/'prism-cuda'/'llama-server.exe'
-SERVER=PRISM_SERVER if PRISM_SERVER.exists() else BUILD/'bin'/('llama-server.exe' if os.name=='nt' else 'llama-server')
+SERVER=PRISM_SERVER
 # Model tags exposed by the REPL. bn15 is installed by setup-repo; bn17 is opt-in.
 MODEL_SPECS={
     'bn15': {'repo':'prism-ml/Ternary-Bonsai-2-27B-gguf','revision':'6ed5e12bf84b7a63069882c91dd9e9218647d17b','file':'Ternary-Bonsai-2-27B-PTQ1_0.gguf','size':5_946_648_928,'label':'PTQ1_0 1.75 bpw (~5.54 GiB)'},
@@ -235,18 +235,8 @@ def load_instructions():
     return f'{instructions}\n\n{TOOL_POLICY}'
 def prepare():
     WORK.mkdir(exist_ok=True)
-    if SERVER.exists(): return
-    if not shutil.which('git'): fail('git was not found. Install Git for Windows.')
-    if not LLAMA.exists(): run(['git','clone','https://github.com/ggml-org/llama.cpp.git',LLAMA])
-    portable_cmake=ROOT/'tools'/'python'/'cmake'/'data'/'bin'/'cmake.exe'
-    cmake=str(portable_cmake) if portable_cmake.exists() else shutil.which('cmake')
-    if not cmake: fail('CMake was not found. Install CMake and Visual Studio C++ Build Tools.')
-    cuda=shutil.which('nvcc') or next(iter((ROOT/'tools'/'cuda').rglob('nvcc.exe')),None)
-    flags=['-DGGML_CUDA=ON'] if cuda and Path(cuda).exists() else ['-DGGML_CUDA=OFF']
-    if not (cuda and Path(cuda).exists()): print('[WARNING] Portable CUDA Toolkit was not found; using a CPU build.')
-    run([cmake,'-S',LLAMA,'-B',LLAMA/'build',*flags,'-DCMAKE_BUILD_TYPE=Release'])
-    run([cmake,'--build',LLAMA/'build','--config','Release','-j',str(os.cpu_count() or 4)])
-    if not SERVER.exists(): fail(f'Server was not found: {SERVER}')
+    if not SERVER.is_file():
+        fail(f'Portable inference runtime is missing: {SERVER}. Run setup-repo.cmd first.')
 def get_model(tag):
     if tag not in MODEL_SPECS:
         fail('Unknown model tag. Available: ' + ', '.join(MODEL_SPECS))
@@ -402,7 +392,7 @@ def start_server(model,tag,context_tokens=None,slots=None):
     if healthy(): return None,None,False
     owns_lock=acquire_server_start_lock()
     if not owns_lock: return None,None,False
-    runtime_dirs=[SERVER.parent,ROOT/'tools'/'cuda'/'toolkit'/'bin',ROOT/'tools'/'cuda'/'libcublas-windows-x86_64-12.9.1.4-archive'/'bin',ROOT/'tools'/'cuda'/'libnvjitlink-windows-x86_64-12.9.86-archive'/'bin']
+    runtime_dirs=[SERVER.parent]
     env=os.environ.copy(); env['PATH']=';'.join(str(p) for p in runtime_dirs if p.exists())+';'+env.get('PATH',''); env['CUDA_MODULE_LOADING']='LAZY'
     log=WORK/'server.log'; lf=log.open('w',encoding='utf-8')
     proc=None

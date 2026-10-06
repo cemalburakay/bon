@@ -2,6 +2,7 @@
 setlocal EnableExtensions
 
 set "BN_SETUP_ROOT=%~dp0"
+set "PYTHONDONTWRITEBYTECODE=1"
 if not exist "%BN_SETUP_ROOT%scripts\setup-repo.ps1" (
     echo [ERROR] Setup script was not found: "%BN_SETUP_ROOT%scripts\setup-repo.ps1"
     exit /b 2
