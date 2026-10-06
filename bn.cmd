@@ -20,7 +20,7 @@ if not exist "%BN_ROOT%\scripts\bn.py" (
     goto :finish
 )
 
-set "BN_PYTHON=%BN_ROOT%\.venv\python.exe"
+set "BN_PYTHON=%BN_ROOT%\.venv\Scripts\python.exe"
 if not exist "%BN_PYTHON%" (
     echo [ERROR] The repo-local Python runtime was not found: "%BN_PYTHON%"
     echo Run setup-repo.cmd first.

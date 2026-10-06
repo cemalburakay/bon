@@ -21,6 +21,7 @@ $DownloadRoot = Join-Path $ToolsRoot $ToolLock.layout.download_dir
 $PythonRoot = Join-Path $ToolsRoot $ToolLock.layout.python_dir
 $PythonExe = Join-Path $PythonRoot 'python.exe'
 $VenvRoot = Join-Path $RepoRoot '.venv'
+$VenvPythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
 $PrismRoot = Join-Path $ToolsRoot $ToolLock.layout.runtime_dir
 $PrismServer = Join-Path $PrismRoot $ToolLock.runtime.server_executable
 $PythonVersion = $ToolLock.python.version
@@ -146,6 +147,14 @@ try {
     }
     if ($PythonVersionText -ne "Python $PythonVersion") {
         $PythonArchive = Get-VerifiedDownload -Uri $PythonArchiveUrl -Destination (Join-Path $DownloadRoot $PythonArchiveName) -ExpectedSha256 $PythonArchiveSha256
+        if (Test-Path -LiteralPath $PythonRoot -PathType Container) {
+            $ResolvedPythonRoot = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $PythonRoot).Path)
+            $ResolvedExpectedPythonRoot = [IO.Path]::GetFullPath((Join-Path $ToolsRoot $ToolLock.layout.python_dir))
+            if (-not [StringComparer]::OrdinalIgnoreCase.Equals($ResolvedPythonRoot, $ResolvedExpectedPythonRoot)) {
+                throw "Refusing to replace a Python directory outside the pinned tools location: $ResolvedPythonRoot"
+            }
+            Get-ChildItem -LiteralPath $PythonRoot -Force | Remove-Item -Recurse -Force
+        }
         Expand-Archive -Path $PythonArchive -DestinationPath $PythonRoot -Force
     } else {
         Write-Host "Portable Python $PythonVersion is already installed."
@@ -177,14 +186,14 @@ try {
     if ($LASTEXITCODE -ne 0 -or $BytecodeDisabled -ne 'True') {
         throw 'The portable Python runtime did not disable bytecode writes.'
     }
+    $PipMetadata = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/$PipVersion/json" -TimeoutSec 60
+    $PipWheel = $PipMetadata.urls | Where-Object { $_.filename -eq $PipWheelName } | Select-Object -First 1
+    if (-not $PipWheel -or $PipWheel.digests.sha256 -ne $PipArchiveSha256) {
+        throw 'The pinned pip wheel metadata did not match its expected SHA-256.'
+    }
+    $PipArchive = Get-VerifiedDownload -Uri $PipWheel.url -Destination (Join-Path $DownloadRoot $PipArchiveName) -ExpectedSha256 $PipArchiveSha256
     $PipMetadataDirectory = Join-Path $SitePackages "pip-$PipVersion.dist-info"
     if (-not (Test-Path -LiteralPath $PipMetadataDirectory -PathType Container)) {
-        $PipMetadata = Invoke-RestMethod -Uri "https://pypi.org/pypi/pip/$PipVersion/json" -TimeoutSec 60
-        $PipWheel = $PipMetadata.urls | Where-Object { $_.filename -eq $PipWheelName } | Select-Object -First 1
-        if (-not $PipWheel -or $PipWheel.digests.sha256 -ne $PipArchiveSha256) {
-            throw 'The pinned pip wheel metadata did not match its expected SHA-256.'
-        }
-        $PipArchive = Get-VerifiedDownload -Uri $PipWheel.url -Destination (Join-Path $DownloadRoot $PipArchiveName) -ExpectedSha256 $PipArchiveSha256
         Expand-Archive -Path $PipArchive -DestinationPath $SitePackages -Force
     }
 
@@ -197,20 +206,87 @@ try {
         throw "Could not bootstrap pip from the pinned embedded wheel: $PipVersionText"
     }
 
-    Write-Host 'Checking the pinned Python dependency set ...'
+    Write-Host 'Checking the pinned virtual-environment bootstrap packages ...'
+    $PreviousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $BootstrapSpecs = @($ToolLock.bootstrap_packages | ForEach-Object { "$($_.name)==$($_.version)" })
+    & $PythonExe -m pip install --disable-pip-version-check --no-deps @BootstrapSpecs
+    $PipExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $PreviousErrorActionPreference
+    if ($PipExitCode -ne 0) { throw "Virtual-environment bootstrap installation failed with exit code $PipExitCode." }
+
+    $VenvEntry = Get-Item -LiteralPath $VenvRoot -Force -ErrorAction SilentlyContinue
+    if ($VenvEntry -and (($VenvEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+        $VenvTarget = [IO.Path]::GetFullPath([string]$VenvEntry.Target)
+        $ExpectedVenvTarget = [IO.Path]::GetFullPath($PythonRoot)
+        if (-not [StringComparer]::OrdinalIgnoreCase.Equals($VenvTarget, $ExpectedVenvTarget)) {
+            throw "Refusing to replace an unmanaged .venv reparse point: $VenvRoot -> $VenvTarget"
+        }
+        [IO.Directory]::Delete($VenvRoot, $false)
+        $VenvEntry = $null
+    }
+    if ($VenvEntry -and -not (Test-Path -LiteralPath (Join-Path $VenvRoot 'pyvenv.cfg') -PathType Leaf)) {
+        throw "The .venv directory exists but is not a managed virtual environment: $VenvRoot"
+    }
+    if ($VenvEntry) {
+        $PreviousVenvVersion = ''
+        if (Test-Path -LiteralPath $VenvPythonExe -PathType Leaf) {
+            $PreviousVenvVersion = (& $VenvPythonExe --version 2>&1 | Out-String).Trim()
+        }
+        if ($PreviousVenvVersion -ne "Python $PythonVersion") {
+            Write-Host "Rebuilding the managed .venv for Python $PythonVersion ..."
+            Remove-Item -LiteralPath $VenvRoot -Recurse -Force
+            $VenvEntry = $null
+        }
+    }
+    if (-not $VenvEntry) {
+        Write-Host 'Creating the independent repo-local .venv ...'
+        & $PythonExe -m virtualenv --no-download --no-seed --copies --python $PythonExe $VenvRoot
+        if ($LASTEXITCODE -ne 0) { throw "Could not create .venv (exit code $LASTEXITCODE)." }
+    }
+    if (-not (Test-Path -LiteralPath $VenvPythonExe -PathType Leaf)) {
+        throw "The virtual environment did not create its interpreter: $VenvPythonExe"
+    }
+
+    $VenvScripts = Join-Path $VenvRoot 'Scripts'
+    $VenvStdlib = Join-Path $VenvScripts $ToolLock.python.stdlib_archive
+    if (-not (Test-Path -LiteralPath $VenvStdlib -PathType Leaf)) {
+        throw "The virtual environment is missing its embedded standard library: $VenvStdlib"
+    }
+    $VenvPth = Join-Path $VenvScripts $ToolLock.python.pth_file
+    $VenvPthLines = @($ToolLock.python.stdlib_archive, '.', '..\Lib\site-packages', 'import site')
+    [IO.File]::WriteAllLines($VenvPth, $VenvPthLines, [Text.Encoding]::ASCII)
+    $VenvSitePackages = Join-Path $VenvRoot 'Lib\site-packages'
+    New-Item -ItemType Directory -Path $VenvSitePackages -Force | Out-Null
+    if (-not (Test-Path -LiteralPath (Join-Path $VenvSitePackages "pip-$PipVersion.dist-info") -PathType Container)) {
+        Expand-Archive -Path $PipArchive -DestinationPath $VenvSitePackages -Force
+    }
+    $VenvBytecodePolicy = Join-Path $VenvSitePackages 'disable-bytecode.pth'
+    [IO.File]::WriteAllText($VenvBytecodePolicy, "import sys; sys.dont_write_bytecode = True`r`n", [Text.Encoding]::ASCII)
+
+    $VenvVersionText = (& $VenvPythonExe --version 2>&1 | Out-String).Trim()
+    if ($VenvVersionText -ne "Python $PythonVersion") {
+        throw "The .venv uses an unexpected Python version: $VenvVersionText"
+    }
+    $VenvIsolation = @(& $VenvPythonExe -c "import sys; print(sys.dont_write_bytecode); print(any('AppData' in p for p in sys.path))" 2>&1)
+    if ($LASTEXITCODE -ne 0 -or $VenvIsolation.Count -ne 2 -or [string]$VenvIsolation[0] -ne 'True' -or [string]$VenvIsolation[1] -ne 'False') {
+        throw "The .venv failed bytecode or portable-path isolation checks: $($VenvIsolation -join '; ')"
+    }
+
+    Write-Host 'Installing the pinned application dependencies into .venv ...'
     $PreviousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $PackageSpecs = @($ToolLock.python_packages | ForEach-Object { "$($_.name)==$($_.version)" })
-    & $PythonExe -m pip install --disable-pip-version-check @PackageSpecs
+    & $VenvPythonExe -m pip install --disable-pip-version-check --no-deps @PackageSpecs
     $PipExitCode = $LASTEXITCODE
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($PipExitCode -ne 0) { throw "Python package installation failed with exit code $PipExitCode." }
     $ErrorActionPreference = 'Continue'
-    & $PythonExe -c "import huggingface_hub; print('huggingface_hub', huggingface_hub.__version__)"
+    & $VenvPythonExe -c "import huggingface_hub; print('huggingface_hub', huggingface_hub.__version__)"
     $HubImportExitCode = $LASTEXITCODE
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($HubImportExitCode -ne 0) {
-        throw 'huggingface_hub could not be imported by the portable Python runtime.'
+        throw 'huggingface_hub could not be imported by the repo-local .venv.'
     }
 
     $PrismVersion = ''
@@ -254,27 +330,21 @@ try {
         Write-Warning "The Prism runtime did not report a CUDA device. The model can still run on CPU, but GPU acceleration may be unavailable. $DeviceList"
     }
 
-    $ConfiguredDefault = (& $PythonExe -c "import runpy,sys; print(runpy.run_path(sys.argv[1])['DEFAULT_MODEL_TAG'])" $BnSourceFile 2>&1 | Out-String).Trim()
+    $ConfiguredDefault = (& $VenvPythonExe -c "import runpy,sys; print(runpy.run_path(sys.argv[1])['DEFAULT_MODEL_TAG'])" $BnSourceFile 2>&1 | Out-String).Trim()
     $DefaultModelTag = $ToolLock.models.default
     if ($LASTEXITCODE -ne 0 -or $ConfiguredDefault -ne $DefaultModelTag -or $DefaultModelTag -ne 'bn15') {
         throw "The application default model must remain bn15; found '$ConfiguredDefault'."
     }
-    & $PythonExe $BnSourceFile pull $DefaultModelTag
+    & $VenvPythonExe $BnSourceFile pull $DefaultModelTag
     if ($LASTEXITCODE -ne 0) {
         throw "The default $DefaultModelTag model download/verification failed with exit code $LASTEXITCODE."
     }
 
-    $VenvEntry = Get-Item -LiteralPath $VenvRoot -Force -ErrorAction SilentlyContinue
-    if ($VenvEntry) {
-        if (($VenvEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
-            throw "The .venv path already exists and is not the managed tools/python junction: $VenvRoot"
+    foreach ($BytecodeRoot in @($PythonRoot, $VenvRoot)) {
+        $BytecodeCaches = @(Get-ChildItem -LiteralPath $BytecodeRoot -Directory -Filter '__pycache__' -Recurse -Force -ErrorAction SilentlyContinue)
+        foreach ($BytecodeCache in $BytecodeCaches) {
+            Remove-Item -LiteralPath $BytecodeCache.FullName -Recurse -Force
         }
-    } else {
-        New-Item -ItemType Junction -Path $VenvRoot -Target $PythonRoot | Out-Null
-    }
-    if (-not (Test-Path -LiteralPath (Join-Path $VenvRoot 'python.exe') -PathType Leaf) -or
-        -not (Test-Path -LiteralPath (Join-Path $VenvRoot 'Lib\site-packages\disable-bytecode.pth') -PathType Leaf)) {
-        throw 'The root .venv junction does not resolve to the configured tools/python runtime.'
     }
 
     if (-not $SkipPathRegistration) {
