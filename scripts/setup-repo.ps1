@@ -187,15 +187,13 @@ try {
         throw "Could not bootstrap pip from the pinned embedded wheel: $PipVersionText"
     }
 
-    $HubMetadataDirectory = Join-Path $SitePackages 'huggingface_hub-1.32.0.dist-info'
-    if (-not (Test-Path -LiteralPath $HubMetadataDirectory -PathType Container)) {
-        Write-Host 'Installing the pinned Python dependencies ...'
-        $ErrorActionPreference = 'Continue'
-        & $PythonExe -m pip install --disable-pip-version-check --requirement $RequirementsFile
-        $PipExitCode = $LASTEXITCODE
-        $ErrorActionPreference = $PreviousErrorActionPreference
-        if ($PipExitCode -ne 0) { throw "Python package installation failed with exit code $PipExitCode." }
-    }
+    Write-Host 'Checking the pinned Python dependency set ...'
+    $PreviousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $PythonExe -m pip install --disable-pip-version-check --requirement $RequirementsFile
+    $PipExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $PreviousErrorActionPreference
+    if ($PipExitCode -ne 0) { throw "Python package installation failed with exit code $PipExitCode." }
     $ErrorActionPreference = 'Continue'
     & $PythonExe -c "import huggingface_hub; print('huggingface_hub', huggingface_hub.__version__)"
     $HubImportExitCode = $LASTEXITCODE
