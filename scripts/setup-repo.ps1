@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipPathRegistration
+    [switch]$SkipPathRegistration,
+    [switch]$AcceptNvidiaCudaLicense
 )
 
 $ErrorActionPreference = 'Stop'
@@ -118,16 +119,16 @@ try {
     if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
         throw 'This setup currently requires 64-bit Windows.'
     }
-    foreach ($RequiredFile in @('bn.cmd', 'setup-repo.cmd', 'tools\tool-lock.json')) {
+    foreach ($RequiredFile in @('bon.cmd', 'setup-repo.cmd', 'tools\tool-lock.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot $RequiredFile) -PathType Leaf)) {
             throw "Required source file is missing: $RequiredFile"
         }
     }
-    $BnSourceFile = Join-Path (Join-Path $RepoRoot $ToolLock.layout.scripts_dir) 'bn.py'
-    if (-not (Test-Path -LiteralPath $BnSourceFile -PathType Leaf)) {
-        throw "Required application source is missing: $BnSourceFile"
+    $BonSourceFile = Join-Path (Join-Path $RepoRoot $ToolLock.layout.scripts_dir) 'bon.py'
+    if (-not (Test-Path -LiteralPath $BonSourceFile -PathType Leaf)) {
+        throw "Required application source is missing: $BonSourceFile"
     }
-    $InstructionsPath = Join-Path (Join-Path $RepoRoot $ToolLock.layout.instructions_dir) 'bn-instructions.md'
+    $InstructionsPath = Join-Path (Join-Path $RepoRoot $ToolLock.layout.instructions_dir) 'bon-general-assistant.md'
     if (-not (Test-Path -LiteralPath $InstructionsPath -PathType Leaf)) {
         throw "Required system instructions are missing: $InstructionsPath"
     }
@@ -300,6 +301,15 @@ try {
     }
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch [regex]::Escape($ToolLock.runtime.version_contains)) {
+        if (-not $AcceptNvidiaCudaLicense) {
+            Write-Host 'The pinned Prism CUDA runtime bundle includes NVIDIA CUDA 12.4 runtime libraries.'
+            Write-Host 'Review the applicable NVIDIA terms before installation:'
+            Write-Host 'https://docs.nvidia.com/cuda/archive/12.4.0/eula/index.html'
+            $LicenseDecision = Read-Host 'Type ACCEPT to continue after reviewing the NVIDIA terms'
+            if ($LicenseDecision -cne 'ACCEPT') {
+                throw 'NVIDIA CUDA runtime installation was not accepted; setup stopped before downloading runtime binaries.'
+            }
+        }
         $PrismBinaryLock = $ToolLock.runtime.archives[0]
         $CudaRuntimeLock = $ToolLock.runtime.archives[1]
         $PrismArchive = Get-VerifiedAsset -Name $PrismBinaryLock.filename -Uri "$PrismReleaseUrl/$($PrismBinaryLock.filename)" -ExpectedSha256 $PrismBinaryLock.sha256
@@ -330,12 +340,12 @@ try {
         Write-Warning "The Prism runtime did not report a CUDA device. The model can still run on CPU, but GPU acceleration may be unavailable. $DeviceList"
     }
 
-    $ConfiguredDefault = (& $VenvPythonExe -c "import runpy,sys; print(runpy.run_path(sys.argv[1])['DEFAULT_MODEL_TAG'])" $BnSourceFile 2>&1 | Out-String).Trim()
+    $ConfiguredDefault = (& $VenvPythonExe -c "import runpy,sys; print(runpy.run_path(sys.argv[1])['DEFAULT_MODEL_TAG'])" $BonSourceFile 2>&1 | Out-String).Trim()
     $DefaultModelTag = $ToolLock.models.default
-    if ($LASTEXITCODE -ne 0 -or $ConfiguredDefault -ne $DefaultModelTag -or $DefaultModelTag -ne 'bn15') {
-        throw "The application default model must remain bn15; found '$ConfiguredDefault'."
+    if ($LASTEXITCODE -ne 0 -or $ConfiguredDefault -ne $DefaultModelTag -or $DefaultModelTag -ne 'bon2:27b-5gb') {
+        throw "The application default model must remain bon2:27b-5gb; found '$ConfiguredDefault'."
     }
-    & $VenvPythonExe $BnSourceFile pull $DefaultModelTag
+    & $VenvPythonExe $BonSourceFile pull $DefaultModelTag
     if ($LASTEXITCODE -ne 0) {
         throw "The default $DefaultModelTag model download/verification failed with exit code $LASTEXITCODE."
     }
@@ -353,11 +363,11 @@ try {
 
     Write-Host ''
     Write-Host 'Setup completed.'
-    Write-Host 'Default model: bn15 (installed).'
-    Write-Host 'Optional model bn17 is not pulled automatically; use: bn pull bn17'
-    Write-Host 'Start chatting with: bn'
+    Write-Host 'Default model: bon2:27b-5gb (installed).'
+    Write-Host 'Optional model bon2:27b-7gb is not pulled automatically; use: bon pull bon2:27b-7gb'
+    Write-Host 'Start chatting with: bon'
     if (-not $SkipPathRegistration) {
-        Write-Host 'Open a new terminal before using the bn command from another directory.'
+        Write-Host 'Open a new terminal before using the bon command from another directory.'
     }
 } catch {
     [Console]::Error.WriteLine("[ERROR] $($_.Exception.Message)")

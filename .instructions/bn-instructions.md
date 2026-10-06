@@ -1,1 +1,0 @@
-sen yardımcı bir asistansın.

@@ -17,10 +17,10 @@ try:
 except (OSError,KeyError,TypeError,ValueError) as error:
     raise SystemExit(f'[ERROR] Could not load the pinned tool lock: {TOOL_LOCK_FILE} ({error})')
 DEFAULT_PORT=8080; PORT=DEFAULT_PORT
-# bn15 keeps f16 KV (no quality-affecting KV quantization). PQ2_0 leaves
-# very little headroom on this 8 GiB GPU, so bn17 uses the measured q4_0 KV
+# The 5 GB model keeps f16 KV (no quality-affecting KV quantization). PQ2_0 leaves
+# very little headroom on this 8 GiB GPU, so the 7 GB model uses the measured q4_0 KV
 # path; the Prism runtime requires Flash Attention for that path.
-INSTRUCTIONS_FILE=ROOT/TOOL_LOCK['layout']['instructions_dir']/'bn-instructions.md'
+INSTRUCTIONS_FILE=ROOT/TOOL_LOCK['layout']['instructions_dir']/'bon-general-assistant.md'
 DETERMINISTIC_SEED=42
 def fail(m): raise SystemExit(f'\n[ERROR] {m}\n')
 # Performance mode: keep the model and KV cache on the GPU. A 262K context is
@@ -32,30 +32,30 @@ MAX_OUTPUT_TOKENS=4_096
 MODEL_NATIVE_CONTEXT_TOKENS=262_144
 FAST_CONTEXT_TOKENS=34_816
 CONTEXT_HEADROOM_TOKENS=0
-# Context size is capped at the model-native limit. BN_SERVER_CONTEXT_TOKENS
+# Context size is capped at the model-native limit. BON_SERVER_CONTEXT_TOKENS
 # remains a safe global override for experiments.
-CONTEXT_MODE=os.environ.get('BN_CONTEXT_MODE','fast').strip().casefold()
+CONTEXT_MODE=os.environ.get('BON_CONTEXT_MODE','fast').strip().casefold()
 if CONTEXT_MODE not in ('fast','max','full','native'):
-    fail('BN_CONTEXT_MODE must be fast or max.')
+    fail('BON_CONTEXT_MODE must be fast or max.')
 DEFAULT_SERVER_CONTEXT_TOKENS=(MODEL_NATIVE_CONTEXT_TOKENS if CONTEXT_MODE in ('max','full','native') else FAST_CONTEXT_TOKENS)
-SERVER_CONTEXT_OVERRIDE=os.environ.get('BN_SERVER_CONTEXT_TOKENS')
+SERVER_CONTEXT_OVERRIDE=os.environ.get('BON_SERVER_CONTEXT_TOKENS')
 SERVER_CONTEXT_TOKENS=min(int(SERVER_CONTEXT_OVERRIDE) if SERVER_CONTEXT_OVERRIDE is not None else DEFAULT_SERVER_CONTEXT_TOKENS,MODEL_NATIVE_CONTEXT_TOKENS)
 # Runtime knobs can be overridden for A/B tests without editing the launcher.
-# bn17's large PQ2_0 weights make KV pressure especially important on 8 GiB VRAM.
-KV_CACHE_OVERRIDE=os.environ.get('BN_KV_CACHE_TYPE')
-FLASH_ATTN=os.environ.get('BN_FLASH_ATTN','on')
-BATCH_SIZE=int(os.environ.get('BN_BATCH_SIZE','2048'))
-UBATCH_OVERRIDE=os.environ.get('BN_UBATCH_SIZE')
+# The larger PQ2_0 model makes KV pressure especially important on 8 GiB VRAM.
+KV_CACHE_OVERRIDE=os.environ.get('BON_KV_CACHE_TYPE')
+FLASH_ATTN=os.environ.get('BON_FLASH_ATTN','on')
+BATCH_SIZE=int(os.environ.get('BON_BATCH_SIZE','2048'))
+UBATCH_OVERRIDE=os.environ.get('BON_UBATCH_SIZE')
 UBATCH_SIZE=int(UBATCH_OVERRIDE or '512')
-THREADS=int(os.environ.get('BN_THREADS','24'))
-REPEAT_LAST_N=int(os.environ.get('BN_REPEAT_LAST_N','256'))
-REPEAT_PENALTY=float(os.environ.get('BN_REPEAT_PENALTY','1.10'))
-PRESENCE_PENALTY=float(os.environ.get('BN_PRESENCE_PENALTY','0.0'))
-FREQUENCY_PENALTY=float(os.environ.get('BN_FREQUENCY_PENALTY','0.05'))
-REQUEST_MAX_OUTPUT_TOKENS=int(os.environ.get('BN_MAX_OUTPUT_TOKENS',str(MAX_OUTPUT_TOKENS)))
-PARALLEL_SLOTS=int(os.environ.get('BN_PARALLEL_SLOTS','2'))
+THREADS=int(os.environ.get('BON_THREADS','24'))
+REPEAT_LAST_N=int(os.environ.get('BON_REPEAT_LAST_N','256'))
+REPEAT_PENALTY=float(os.environ.get('BON_REPEAT_PENALTY','1.10'))
+PRESENCE_PENALTY=float(os.environ.get('BON_PRESENCE_PENALTY','0.0'))
+FREQUENCY_PENALTY=float(os.environ.get('BON_FREQUENCY_PENALTY','0.05'))
+REQUEST_MAX_OUTPUT_TOKENS=int(os.environ.get('BON_MAX_OUTPUT_TOKENS',str(MAX_OUTPUT_TOKENS)))
+PARALLEL_SLOTS=int(os.environ.get('BON_PARALLEL_SLOTS','2'))
 if SERVER_CONTEXT_TOKENS<1 or REQUEST_MAX_OUTPUT_TOKENS<1 or REQUEST_MAX_OUTPUT_TOKENS>MAX_OUTPUT_TOKENS or BATCH_SIZE<1 or UBATCH_SIZE<1 or THREADS<1 or REPEAT_LAST_N<0 or REPEAT_PENALTY<1.0 or PRESENCE_PENALTY<0.0 or FREQUENCY_PENALTY<0.0 or PARALLEL_SLOTS<1:
-    fail('BN_SERVER_CONTEXT_TOKENS, BN_MAX_OUTPUT_TOKENS, batch, thread, or slot setting is invalid.')
+    fail('BON_SERVER_CONTEXT_TOKENS, BON_MAX_OUTPUT_TOKENS, batch, thread, or slot setting is invalid.')
 def context_for(tag, context_tokens=None):
     if context_tokens is not None:
         requested=int(context_tokens)
@@ -73,7 +73,6 @@ def slot_context_for(tag, context_tokens=None, slots=None):
     return max(1,context_for(tag,context_tokens)//slots)
 def max_input_for(tag, context_tokens=None, slots=None):
     return min(REQUESTED_INPUT_LIMIT_TOKENS,max(1,slot_context_for(tag,context_tokens,slots)-REQUEST_MAX_OUTPUT_TOKENS-CONTEXT_HEADROOM_TOKENS))
-def run(a): print('->',' '.join(map(str,a))); subprocess.run([str(x) for x in a],check=True)
 class DuckDuckGoParser(HTMLParser):
     def __init__(self):
         super().__init__(); self.results=[]; self.current=None; self.in_link=False; self.in_snippet=False
@@ -102,7 +101,7 @@ class DuckDuckGoParser(HTMLParser):
         super().close(); self._finish()
 def duckduckgo_search(query, limit=5):
     url=f'https://lite.duckduckgo.com/lite/?q={quote_plus(query)}&kl=tr-tr'
-    req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; bn-local-assistant/1.0)'})
+    req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; bon-local-assistant/1.0)'})
     with urllib.request.urlopen(req,timeout=20) as response: page=response.read().decode('utf-8','replace')
     parser=DuckDuckGoParser(); parser.feed(page); parser.close()
     return parser.results[:limit]
@@ -252,7 +251,7 @@ def get_model(tag):
         pass
     try: from huggingface_hub import hf_hub_download
     except ImportError:
-        run([sys.executable,'-m','pip','install','--upgrade','huggingface_hub']); from huggingface_hub import hf_hub_download
+        fail('The pinned huggingface_hub package is missing. Run setup-repo.cmd to repair the Bon environment.')
     downloaded=Path(hf_hub_download(spec['repo'],spec['file'],revision=spec['revision'],local_dir=WORK,force_download=force_download))
     if downloaded.stat().st_size!=expected_size:
         raise RuntimeError(f'Model download has an unexpected size: {downloaded.stat().st_size} bytes; expected {expected_size}.')
@@ -281,17 +280,17 @@ def port_is_available(port):
 def find_available_port(start=DEFAULT_PORT):
     for candidate in range(max(1,start),min(65535,start+101)):
         if port_is_available(candidate): return candidate
-    fail(f'No available local port found near {start}. Set BN_PORT to an available port.')
+    fail(f'No available local port found near {start}. Set BON_PORT to an available port.')
 def configure_port():
     global PORT
-    requested=os.environ.get('BN_PORT','').strip()
+    requested=os.environ.get('BON_PORT','').strip()
     if requested:
         try: configured=int(requested)
-        except ValueError: fail('BN_PORT must be an integer between 1 and 65535.')
-        if not 1<=configured<=65535: fail('BN_PORT must be an integer between 1 and 65535.')
+        except ValueError: fail('BON_PORT must be an integer between 1 and 65535.')
+        if not 1<=configured<=65535: fail('BON_PORT must be an integer between 1 and 65535.')
         PORT=configured
         if not healthy() and not port_is_available(PORT):
-            fail(f'BN_PORT {PORT} is already in use. Choose another port or unset BN_PORT.')
+            fail(f'BON_PORT {PORT} is already in use. Choose another port or unset BON_PORT.')
         return
     try: state=json.loads(SERVER_STATE_FILE.read_text(encoding='utf-8'))
     except (OSError,ValueError,TypeError,json.JSONDecodeError): state=None
@@ -314,6 +313,22 @@ def _pid_alive(pid):
     try:
         os.kill(pid,0); return True
     except OSError: return False
+def active_server_model_tag():
+    try:
+        state=json.loads(SERVER_STATE_FILE.read_text(encoding='utf-8'))
+        state_port=int(state.get('port',0))
+        pid=int(state.get('pid',0))
+        tag=state.get('tag')
+    except (OSError,ValueError,TypeError,AttributeError,json.JSONDecodeError):
+        return None
+    if state_port!=PORT or not _pid_alive(pid) or not isinstance(tag,str) or not tag:
+        return None
+    return tag
+def ensure_shared_server_model(active_tag,requested_tag):
+    if active_tag is None:
+        raise RuntimeError('A local model server is already healthy, but Bon cannot verify which model it serves. Close it or choose a different port.')
+    if active_tag!=requested_tag:
+        raise RuntimeError(f'The shared local server is running {active_tag}, not {requested_tag}. Close its Bon REPL before starting another model.')
 def cleanup_stale_server_clients():
     SERVER_CLIENT_DIR.mkdir(exist_ok=True)
     for lease in SERVER_CLIENT_DIR.glob('*.lease'):
@@ -388,7 +403,9 @@ def start_server(model,tag,context_tokens=None,slots=None):
     global PORT
     # Multiple REPL processes share one server/model.  Only the first process
     # owns the child process; later processes attach to the healthy endpoint.
-    if healthy(): return None,None,False
+    if healthy():
+        ensure_shared_server_model(active_server_model_tag(),tag)
+        return None,None,False
     owns_lock=acquire_server_start_lock()
     if not owns_lock: return None,None,False
     runtime_dirs=[SERVER.parent]
@@ -403,8 +420,8 @@ def start_server(model,tag,context_tokens=None,slots=None):
             if healthy():
                 lf.close(); return None,None,False
             if not port_is_available(PORT):
-                if os.environ.get('BN_PORT','').strip():
-                    raise RuntimeError(f'BN_PORT {PORT} became unavailable before llama-server could start.')
+                if os.environ.get('BON_PORT','').strip():
+                    raise RuntimeError(f'BON_PORT {PORT} became unavailable before llama-server could start.')
                 lf.close(); PORT=find_available_port(max(DEFAULT_PORT+1,PORT+1)); lf=log.open('w',encoding='utf-8')
             proc=subprocess.Popen(server_command(model,tag,context_tokens,slots),cwd=SERVER.parent,env=env,stdout=lf,stderr=subprocess.STDOUT,text=True,creationflags=creation_flags)
             for _ in range(90):
@@ -419,7 +436,7 @@ def start_server(model,tag,context_tokens=None,slots=None):
                 try: log_text=log.read_text(encoding='utf-8',errors='replace').casefold()
                 except OSError: log_text=''
                 bind_failed='couldn\'t bind http server socket' in log_text or 'http server error' in log_text
-                if bind_failed and not os.environ.get('BN_PORT','').strip() and attempt<19:
+                if bind_failed and not os.environ.get('BON_PORT','').strip() and attempt<19:
                     proc=None
                     PORT=find_available_port(max(DEFAULT_PORT+1,PORT+1))
                     lf=log.open('w',encoding='utf-8')
@@ -453,24 +470,36 @@ def repetition_reason(text):
         if len(tokens)>=width*3 and tokens[-width:]==tokens[-2*width:-width]==tokens[-3*width:-2*width]:
             return f'the same {width}-word pattern was repeated'
     return None
+def parse_cli_args(args):
+    usage='Usage: bon [run <bon2:27b-5gb|bon2:27b-7gb> | pull <bon2:27b-5gb|bon2:27b-7gb>]'
+    if not args: return 'run',DEFAULT_MODEL_TAG
+    command=args[0].casefold()
+    if command in ('-h','--help','help') and len(args)==1: return 'help',None
+    if command in ('run','pull') and len(args)==2:
+        tag=args[1].casefold()
+        if tag not in MODEL_SPECS:
+            fail(f'Unknown model tag: {tag}. Available: '+', '.join(MODEL_SPECS))
+        return command,tag
+    if command=='run': fail('Usage: bon run <bon2:27b-5gb|bon2:27b-7gb>')
+    if command=='pull': fail('Usage: bon pull <bon2:27b-5gb|bon2:27b-7gb>')
+    fail(usage)
 def main():
     if hasattr(sys.stdout,'reconfigure'): sys.stdout.reconfigure(encoding='utf-8',errors='replace')
-    if len(sys.argv)>1:
-        if sys.argv[1].casefold() in ('-h','--help','help'):
-            print('Usage: bn [pull <bn15|bn17>]')
-            print('Without arguments, start the interactive REPL.')
-            return
-        if sys.argv[1].casefold()=='pull' and len(sys.argv)==3:
-            pull_model(sys.argv[2])
-            return
-        fail('Usage: bn [pull <bn15|bn17>]')
-    instructions=load_instructions(); prepare(); configure_port(); current_tag=DEFAULT_MODEL_TAG; proc=None; lf=None; model=None; active_context=None; active_slots=default_slots_for(current_tag); server_owned=False; lease=None
+    action,current_tag=parse_cli_args(sys.argv[1:])
+    if action=='help':
+        print('Usage: bon [run <bon2:27b-5gb|bon2:27b-7gb> | pull <bon2:27b-5gb|bon2:27b-7gb>]')
+        print('Without arguments, start the Bon assistant with the default model.')
+        return
+    if action=='pull':
+        pull_model(current_tag)
+        return
+    instructions=load_instructions(); prepare(); configure_port(); proc=None; lf=None; model=None; active_context=None; active_slots=default_slots_for(current_tag); server_owned=False; lease=None
     try:
         lease=register_server_client()
         active_context=context_for(current_tag)
         model=get_model(current_tag); proc,lf,server_owned=start_server(model,current_tag,active_context,active_slots)
         shared_note='Started a new shared server.' if server_owned else 'Connected to the existing shared server.'
-        print(f"\nTernary-Bonsai REPL ready. Model: {current_tag} — {MODEL_SPECS[current_tag]['label']}. Port: {PORT}. Total context: {active_context:,}; slot context: {slot_context_for(current_tag,active_context,active_slots):,}; max input/request: {max_input_for(current_tag,active_context,active_slots):,}; max output: {REQUEST_MAX_OUTPUT_TOKENS:,}. Slots: {active_slots}. {shared_note} Fast context is the default; full capacity: /context max. Pull optional models: /pull <tag>. Change slots: /slot 1|2. Default: /hist off (one-shot). Exit: /exit\n")
+        print(f"\nBon is ready, powered by PrismML Ternary-Bonsai 2. Model: {current_tag} — {MODEL_SPECS[current_tag]['label']}. Port: {PORT}. Total context: {active_context:,}; slot context: {slot_context_for(current_tag,active_context,active_slots):,}; max input/request: {max_input_for(current_tag,active_context,active_slots):,}; max output: {REQUEST_MAX_OUTPUT_TOKENS:,}. Slots: {active_slots}. {shared_note} Fast context is the default; full capacity: /context max. Pull optional models: /pull <tag>. Change slots: /slot 1|2. Default: /hist off (one-shot). Exit: /exit\n")
         history=[]; history_enabled=False
         while True:
             try:
@@ -487,7 +516,7 @@ def main():
             if command=='/pull' or command.startswith('/pull '):
                 requested=command.split(None,1)[1].strip() if ' ' in command else ''
                 if not requested:
-                    print('[REPL] Usage: /pull bn15 | /pull bn17'); continue
+                    print('[REPL] Usage: /pull bon2:27b-5gb | /pull bon2:27b-7gb'); continue
                 if requested not in MODEL_SPECS:
                     print('[REPL] Invalid model. Available: ' + ', '.join(MODEL_SPECS)); continue
                 try: pull_model(requested)

@@ -10,6 +10,8 @@
   },
   "python": {
     "version": "3.12.10",
+    "license": "PSF-2.0",
+    "license_url": "https://docs.python.org/3/license.html",
     "embedded_archive": "python-3.12.10-embed-amd64.zip",
     "stdlib_archive": "python312.zip",
     "pth_file": "python312._pth",
@@ -53,8 +55,11 @@
   ],
   "runtime": {
     "repository": "PrismML-Eng/llama.cpp",
+    "license": "MIT",
+    "license_url": "https://github.com/PrismML-Eng/llama.cpp/blob/prism/LICENSE",
     "release": "prism-b10709-9a9394a",
     "cuda_version": "12.4",
+    "cuda_eula_url": "https://docs.nvidia.com/cuda/archive/12.4.0/eula/index.html",
     "server_executable": "llama-server.exe",
     "version_contains": "build 10709, commit 9a9394a89",
     "archives": [
@@ -69,16 +74,18 @@
     ]
   },
   "models": {
-    "default": "bn15",
+    "default": "bon2:27b-5gb",
+    "license": "Apache-2.0",
+    "base_model": "Qwen/Qwen3.8-27B",
     "tags": {
-      "bn15": {
+      "bon2:27b-5gb": {
         "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
         "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
         "file": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
         "size": 5946648928,
         "label": "PTQ1_0 1.75 bpw (~5.54 GiB)"
       },
-      "bn17": {
+      "bon2:27b-7gb": {
         "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
         "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
         "file": "Ternary-Bonsai-2-27B-PQ2_0.gguf",
@@ -87,8 +94,8 @@
       }
     },
     "runtime": {
-      "bn15": { "kv": "f16", "ubatch": 256, "context": 262144 },
-      "bn17": { "kv": "q4_0", "ubatch": 512, "context": 262144 }
+      "bon2:27b-5gb": { "kv": "f16", "ubatch": 256, "context": 262144 },
+      "bon2:27b-7gb": { "kv": "q4_0", "ubatch": 512, "context": 262144 }
     }
   }
 }
