@@ -17,6 +17,7 @@ Notable changes to Bon are recorded here. This project has not made a tagged pub
 
 ### Changed
 
+- Audited reachable Git history and pinned license records; corrected embedded Python and CodeQL license scope, preserved model/runtime notices, and replaced automatic MIT glob coverage with an explicit file list.
 - Standardized the product name, launch command, Python entrypoint, model tags, and instruction filenames as `Bon`/`bon`.
 - Replaced the former shorthand model tags with `bon2:27b-5gb` and `bon2:27b-7gb` across the CLI and documentation.
 - Moved all model downloads under the Git-ignored `.models/` directory.

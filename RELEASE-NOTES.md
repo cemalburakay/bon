@@ -20,3 +20,4 @@ This repository is being prepared for its first public release. Do not treat thi
 - An 8 GiB GPU is close to full utilization with `bon2:27b-5gb`; other hardware may need a smaller context or CPU fallback.
 - Search queries are sent to DuckDuckGo when search is invoked. Model/runtime and package downloads contact their upstream hosts.
 - The NVIDIA CUDA runtime components have separate NVIDIA terms and are not included under Bon's MIT license.
+- Publish the reviewed source archive; retain the upstream legal files when installing locally. Ownership and other open rights questions are recorded in [LEGAL-REVIEW.md](LEGAL-REVIEW.md).

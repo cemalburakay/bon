@@ -261,6 +261,20 @@ def verify_model_integrity(tag,path):
     temporary_marker=marker.with_suffix('.tmp')
     temporary_marker.write_text(json.dumps(marker_data),encoding='utf-8')
     temporary_marker.replace(marker)
+def ensure_model_notices(tag):
+    spec=MODEL_SPECS[tag]
+    notice_dir=WORK/'.licenses'/spec['repo'].replace('/','--')/spec['revision']
+    for notice in TOOL_LOCK['models']['legal_files']:
+        local_notice=notice_dir/notice['file']
+        if local_notice.is_file() and sha256_file(local_notice)==notice['sha256']:
+            continue
+        try: from huggingface_hub import hf_hub_download
+        except ImportError:
+            fail('The pinned huggingface_hub package is missing. Run setup-repo.cmd to repair the Bon environment.')
+        downloaded=Path(hf_hub_download(spec['repo'],notice['file'],revision=spec['revision'],local_dir=notice_dir,force_download=local_notice.is_file()))
+        if sha256_file(downloaded)!=notice['sha256']:
+            raise RuntimeError(f'Upstream legal-file SHA-256 mismatch for {tag}: {notice["file"]}.')
+
 def get_model(tag):
     if tag not in MODEL_SPECS:
         fail('Unknown model tag. Available: ' + ', '.join(MODEL_SPECS))
@@ -268,17 +282,22 @@ def get_model(tag):
     local_model=WORK/spec['file']
     expected_size=spec['size']
     force_download=False
+    verified_local_model=False
     try:
         if local_model.is_file():
             if local_model.stat().st_size==expected_size:
                 try:
                     verify_model_integrity(tag,local_model)
-                    return local_model
                 except RuntimeError:
                     force_download=True
+                else:
+                    verified_local_model=True
             force_download=True
     except OSError:
         pass
+    if verified_local_model:
+        ensure_model_notices(tag)
+        return local_model
     try: from huggingface_hub import hf_hub_download
     except ImportError:
         fail('The pinned huggingface_hub package is missing. Run setup-repo.cmd to repair the Bon environment.')
@@ -286,6 +305,7 @@ def get_model(tag):
     if downloaded.stat().st_size!=expected_size:
         raise RuntimeError(f'Model download has an unexpected size: {downloaded.stat().st_size} bytes; expected {expected_size}.')
     verify_model_integrity(tag,downloaded)
+    ensure_model_notices(tag)
     return downloaded
 def pull_model(tag):
     tag=tag.casefold()

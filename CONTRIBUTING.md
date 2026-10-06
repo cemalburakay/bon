@@ -31,9 +31,11 @@ GPU/model smoke tests require the downloaded model and compatible hardware, so s
 
 ## Source, privacy, and license changes
 
+By intentionally submitting original changes for inclusion, you offer those changes under the repository's MIT license unless an alternative is explicitly identified and accepted by the maintainer. You retain your copyright; submission does not assign it to the maintainer. Confirm your authority to contribute, including any employer/coauthor permissions, and supply accurate contributor notices. Disclose copied or generated material, its provenance, and applicable terms; AI assistance does not itself establish license clearance.
+
 - Keep application code, commands, messages, and build scripts in English. The tracked assistant instruction documents under `.instructions/` intentionally remain Turkish/English according to their teaching purpose.
 - Update `tools/tool-lock.json`, `THIRD-PARTY-NOTICES.md`, and the relevant guides when changing a downloaded tool, model, runtime, or package.
-- Before committing any vendored third-party file, add its actual copyright and SPDX license metadata (or a more-specific `REUSE.toml` entry) so the root Bon MIT fallback does not mislabel it.
+- Add every new Bon-authored file to the explicit `REUSE.toml` coverage only after reviewing provenance. For a third-party file, preserve its actual copyright/license and provide appropriate SPDX metadata and license texts; do not label it as Bon-authored.
 - Do not copy upstream model logos, code, or license text without preserving attribution and applicable notices.
 - Make any external network call, prompt exposure, or persistence change explicit in `PRIVACY.md` and the user guide.
 - Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Pull requests may be declined if ownership, license compatibility, or distribution rights are unclear.

@@ -67,6 +67,7 @@ Sampling settings use temperature `0`, top-k `1`, and a fixed seed. This is dete
 - [Security policy](SECURITY.md)
 - [Community code of conduct](CODE_OF_CONDUCT.md)
 - [Publishing checklist](PUBLISHING-CHECKLIST.md)
+- [Licensing review and remaining rights questions](LEGAL-REVIEW.md)
 
 The current CLI loads `.instructions/bon-general-assistant.md`. The additional math and English-tutor instruction files are retained as prompt templates; this build does not expose a command to switch between them.
 
@@ -74,4 +75,4 @@ The current CLI loads `.instructions/bon-general-assistant.md`. The additional m
 
 The original Bon source code and original project assets are offered under the MIT License in [LICENSE](LICENSE), with the copyright holder named there. [`REUSE.toml`](REUSE.toml) records the SPDX license and copyright metadata for Bon-authored tracked files. That license applies only to Bon-authored material unless a file or notice says otherwise. Downloaded models, runtime binaries, CUDA libraries, Python, packages, and external services have their own terms; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-This repository's notices are informational, not legal advice, and do not guarantee that any particular distribution or use is lawful in every jurisdiction. Review upstream terms and obtain qualified legal advice before commercial distribution or other material use.
+The reviewed release scope is tracked source and original assets. Downloaded models and runtime installations are excluded; their upstream notices are retained locally by setup/model pulls. This repository's notices are informational, not legal advice, and do not guarantee lawful distribution or use in every jurisdiction. [LEGAL-REVIEW.md](LEGAL-REVIEW.md) records evidence and questions requiring maintainer/counsel confirmation before publication.

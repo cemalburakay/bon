@@ -1,7 +1,45 @@
 version = 1
 
 [[annotations]]
-path = ["*", "**/*"]
+# Explicit coverage avoids assigning Bon's copyright to newly imported files.
+# Maintainer-declared ownership is metadata, not independent proof of rights.
+path = [
+  ".editorconfig",
+  ".gitattributes",
+  ".github/ISSUE_TEMPLATE/bug_report.yml",
+  ".github/ISSUE_TEMPLATE/config.yml",
+  ".github/ISSUE_TEMPLATE/feature_request.yml",
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  ".github/dependabot.yml",
+  ".github/workflows/ci.yml",
+  ".github/workflows/codeql.yml",
+  ".gitignore",
+  ".instructions/bon-general-assistant.md",
+  ".instructions/bon-math.md",
+  ".instructions/bon-tutor.md",
+  "CHANGELOG.md",
+  "CITATION.cff",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
+  "LEGAL-DISCLAIMER.md",
+  "LEGAL-REVIEW.md",
+  "PRIVACY.md",
+  "PUBLISHING-CHECKLIST.md",
+  "README.md",
+  "RELEASE-NOTES.md",
+  "SECURITY.md",
+  "SETUP-GUIDE.md",
+  "SUPPORT.md",
+  "THIRD-PARTY-NOTICES.md",
+  "USER-GUIDE.md",
+  "assets/bon-mark.svg",
+  "bon.cmd",
+  "scripts/bon.py",
+  "scripts/setup-repo.ps1",
+  "setup-repo.cmd",
+  "tests/test_bon.py",
+  "tools/tool-lock.json"
+]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 Cemal Burak Ay"
 SPDX-License-Identifier = "MIT"

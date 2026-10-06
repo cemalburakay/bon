@@ -11,3 +11,5 @@ Please do not publish exploit details or sensitive data in a public issue. Use G
 Include the affected commit/version, environment, impact, and a safe reproduction outline. Do not include access tokens, private prompts, model files, or personal data. The maintainer will acknowledge reports when able; no SLA is offered.
 
 Repository owners: enable **Private vulnerability reporting**, **Dependabot alerts**, **secret scanning/push protection** where available, and code scanning in GitHub repository settings. The workflow in `.github/workflows/codeql.yml` is a code-scanning starting point, not a substitute for enabling the GitHub feature.
+
+The CodeQL job is restricted to public repositories by default. Its CLI has separate GitHub terms; reviewing those terms and any entitlement is required before enabling it for private or other analysis contexts. The action source's MIT license does not license the CLI engine.

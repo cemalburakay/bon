@@ -362,6 +362,19 @@ try {
         Write-Host 'The pinned Prism CUDA runtime is already installed.'
     }
 
+    $RuntimeLicenseExe = Join-Path $PrismRoot $ToolLock.runtime.license_executable
+    if (-not (Test-Path -LiteralPath $RuntimeLicenseExe -PathType Leaf)) {
+        throw "The runtime license-report executable is missing: $RuntimeLicenseExe"
+    }
+    $ErrorActionPreference = 'Continue'
+    $RuntimeLicenseText = (& $RuntimeLicenseExe licenses 2>&1 | Out-String)
+    $RuntimeLicenseExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $PreviousErrorActionPreference
+    if ($RuntimeLicenseExitCode -ne 0 -or $RuntimeLicenseText -notmatch 'License for llama.cpp') {
+        throw 'The pinned inference runtime could not report its bundled license notices.'
+    }
+    [IO.File]::WriteAllText((Join-Path $PrismRoot 'THIRD-PARTY-LICENSES.txt'), $RuntimeLicenseText, [Text.UTF8Encoding]::new($false))
+
     $ErrorActionPreference = 'Continue'
     $DeviceList = (& $PrismServer --list-devices 2>&1 | Out-String).Trim()
     $DeviceExitCode = $LASTEXITCODE

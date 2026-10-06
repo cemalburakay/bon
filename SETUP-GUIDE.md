@@ -23,7 +23,7 @@ Plan for at least 9 GiB free on the repository drive for the minimum setup. The 
    .\setup-repo.cmd -AcceptNvidiaCudaLicense
    ```
 
-   The switch records your confirmation for the installer only; it is not legal advice and does not replace the upstream agreement. If you do not accept the terms, setup stops before downloading the runtime binaries.
+   The switch is an acknowledgement for that invocation; setup does not create a durable consent record or certify distribution rights. The upstream agreement still applies. If you do not accept the terms, setup stops before downloading the runtime binaries.
 4. Setup may add the repository directory to the current user's PATH. Open a new terminal, then run `bon`. To avoid PATH registration, use `.\setup-repo.cmd -SkipPathRegistration`.
 
 The install is idempotent for the pinned versions: a later run verifies installed components and repairs missing files. It does not download `bon2:27b-7gb` unless requested.
@@ -51,6 +51,8 @@ Or from inside the REPL:
 ```
 
 The model file is saved to `.models/`, which is excluded from Git. Bon checks its pinned SHA-256 the first time it is used; later launches skip a full re-hash while file size and modification time are unchanged. Allow extra disk space and expect increased VRAM pressure.
+
+Model pulls also save the pinned upstream `LICENSE` and `NOTICE.txt` under `.models/.licenses/<repository>/<revision>/`, with their own SHA-256 checks. Setup retains Python's original `tools/python/LICENSE.txt`, wheel license/notice files, and the runtime's complete credits in `tools/prism-cuda/THIRD-PARTY-LICENSES.txt`. These local files support attribution; do not treat the installed directory as a cleared redistribution bundle.
 
 ## Portable layout
 

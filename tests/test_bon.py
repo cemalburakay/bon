@@ -6,8 +6,10 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +136,40 @@ class BonTests(unittest.TestCase):
                 app_globals["WORK"] = original_work
                 app_globals["MODEL_INTEGRITY_DIR"] = original_marker_dir
                 app_globals["MODEL_SPECS"] = original_specs
+
+    def test_model_notices_are_retained_cached_and_hash_checked(self):
+        payload = b"Upstream copyright and license notice\n"
+        expected = hashlib.sha256(payload).hexdigest()
+        ensure = self.app["ensure_model_notices"]
+        corrupted_download = [False]
+
+        def download(repo, filename, *, revision, local_dir, force_download):
+            destination = Path(local_dir) / filename
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(b"corrupt notice" if corrupted_download[0] else payload)
+            return str(destination)
+
+        downloader = Mock(side_effect=download)
+        fake_hub = types.ModuleType("huggingface_hub")
+        fake_hub.hf_hub_download = downloader
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            overrides = {
+                "WORK": root,
+                "MODEL_SPECS": {"sample": {"repo": "publisher/model", "revision": "pinned-revision"}},
+                "TOOL_LOCK": {"models": {"legal_files": [{"file": "NOTICE.txt", "sha256": expected}]}},
+            }
+            with patch.dict(ensure.__globals__, overrides), patch.dict(sys.modules, {"huggingface_hub": fake_hub}):
+                ensure("sample")
+                local_notice = root / ".licenses" / "publisher--model" / "pinned-revision" / "NOTICE.txt"
+                self.assertEqual(local_notice.read_bytes(), payload)
+                ensure("sample")
+                self.assertEqual(downloader.call_count, 1)
+                local_notice.write_bytes(b"tampered notice")
+                corrupted_download[0] = True
+                with self.assertRaisesRegex(RuntimeError, "legal-file SHA-256 mismatch"):
+                    ensure("sample")
+                self.assertTrue(downloader.call_args.kwargs["force_download"])
 
 
 if __name__ == "__main__":

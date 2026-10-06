@@ -11,7 +11,9 @@
   "python": {
     "version": "3.12.10",
     "license": "PSF-2.0",
-    "license_url": "https://docs.python.org/3/license.html",
+    "license_scope": "CPython project license; the embedded distribution also includes historical and third-party terms in LICENSE.txt",
+    "license_url": "https://docs.python.org/3.12/license.html",
+    "bundled_license_file": "LICENSE.txt",
     "embedded_archive": "python-3.12.10-embed-amd64.zip",
     "stdlib_archive": "python312.zip",
     "pth_file": "python312._pth",
@@ -52,11 +54,13 @@
   "runtime": {
     "repository": "PrismML-Eng/llama.cpp",
     "license": "MIT",
-    "license_url": "https://github.com/PrismML-Eng/llama.cpp/blob/prism/LICENSE",
+    "source_revision": "9a9394a895b96003ca842a6041cb28ac49a108f7",
+    "license_url": "https://github.com/PrismML-Eng/llama.cpp/blob/9a9394a895b96003ca842a6041cb28ac49a108f7/LICENSE",
     "release": "prism-b10709-9a9394a",
     "cuda_version": "12.4",
     "cuda_eula_url": "https://docs.nvidia.com/cuda/archive/12.4.0/eula/index.html",
     "server_executable": "llama-server.exe",
+    "license_executable": "llama.exe",
     "version_contains": "build 10709, commit 9a9394a89",
     "archives": [
       {
@@ -73,6 +77,10 @@
     "default": "bon2:27b-5gb",
     "license": "Apache-2.0",
     "base_model": "Qwen/Qwen3.8-27B",
+    "legal_files": [
+      { "file": "LICENSE", "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b" },
+      { "file": "NOTICE.txt", "sha256": "de0e0c48fb6f691a31e74f338e3ccf93f9ecdfe2866ab769c4bf8b79a7636a30" }
+    ],
     "tags": {
       "bon2:27b-5gb": {
         "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",

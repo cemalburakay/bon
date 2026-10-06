@@ -14,3 +14,5 @@ Search is automatic when the model chooses the available `web_search` tool. If y
 Bon does not intentionally save a transcript. History is off by default; `/hist on` retains prior turns only in that running REPL process, and `/clear` erases that in-memory history. The local inference runtime writes operational logs and state under `.models/`; avoid assuming those files contain no sensitive details. `.models/` is ignored by Git.
 
 Use care with confidential or regulated information. Search queries may reveal information to DuckDuckGo, and setup traffic reveals downloads to the relevant providers. See [third-party terms](THIRD-PARTY-NOTICES.md).
+
+Bon does not anonymize search queries or establish a lawful basis for a deployment's processing of personal data. A deployment operator must assess the actual data flow and applicable obligations; this privacy description is not a compliance certification.
