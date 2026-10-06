@@ -21,7 +21,7 @@ MODEL_RUNTIME={
     'bn15':{'kv':'f16','ubatch':256,'context':262_144},
     'bn17':{'kv':'q4_0','ubatch':512,'context':262_144},
 }
-INSTRUCTIONS_FILE=ROOT/'bn-instructions.md'
+INSTRUCTIONS_FILE=ROOT/'.instructions'/'bn-instructions.md'
 DETERMINISTIC_SEED=42
 def fail(m): raise SystemExit(f'\n[ERROR] {m}\n')
 # Performance mode: keep the model and KV cache on the GPU. A 262K context is

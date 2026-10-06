@@ -21,7 +21,11 @@ if not exist "%BN_ROOT%\bn.py" (
 
 set "BN_PYTHON="
 set "BN_PYTHON_ARGS="
-if exist "%BN_ROOT%\tools\runtime-python\python.exe" (
+if exist "%BN_ROOT%\.venv\python.exe" (
+    "%BN_ROOT%\.venv\python.exe" --version >nul 2>&1
+    if not errorlevel 1 set "BN_PYTHON=%BN_ROOT%\.venv\python.exe"
+)
+if not defined BN_PYTHON if exist "%BN_ROOT%\tools\runtime-python\python.exe" (
     "%BN_ROOT%\tools\runtime-python\python.exe" --version >nul 2>&1
     if not errorlevel 1 set "BN_PYTHON=%BN_ROOT%\tools\runtime-python\python.exe"
 )

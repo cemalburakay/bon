@@ -10,7 +10,7 @@ $ProgressPreference = 'SilentlyContinue'
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $ToolsRoot = Join-Path $RepoRoot 'tools'
 $DownloadRoot = Join-Path $ToolsRoot 'downloads'
-$PythonRoot = Join-Path $ToolsRoot 'runtime-python'
+$PythonRoot = Join-Path $RepoRoot '.venv'
 $PythonExe = Join-Path $PythonRoot 'python.exe'
 $PrismRoot = Join-Path $ToolsRoot 'prism-cuda'
 $PrismServer = Join-Path $PrismRoot 'llama-server.exe'
@@ -120,10 +120,13 @@ try {
     if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
         throw 'This setup currently requires 64-bit Windows.'
     }
-    foreach ($RequiredFile in @('bn.py', 'bn.cmd', 'bn-instructions.md', 'requirements.txt')) {
+    foreach ($RequiredFile in @('bn.py', 'bn.cmd', 'requirements.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot $RequiredFile) -PathType Leaf)) {
             throw "Required source file is missing: $RequiredFile"
         }
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot '.instructions\bn-instructions.md') -PathType Leaf)) {
+        throw 'Required system instructions are missing: .instructions\bn-instructions.md'
     }
 
     $DriveRoot = [IO.Path]::GetPathRoot($RepoRoot)
