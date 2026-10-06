@@ -72,6 +72,6 @@ The current CLI loads `.instructions/bon-general-assistant.md`. The additional m
 
 ## License
 
-The original Bon source code and original project assets are offered under the MIT License in [LICENSE](LICENSE), with the copyright holder named there. That license applies only to Bon-authored material unless a file or notice says otherwise. Downloaded models, runtime binaries, CUDA libraries, Python, packages, and external services have their own terms; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+The original Bon source code and original project assets are offered under the MIT License in [LICENSE](LICENSE), with the copyright holder named there. [`REUSE.toml`](REUSE.toml) records the SPDX license and copyright metadata for Bon-authored tracked files. That license applies only to Bon-authored material unless a file or notice says otherwise. Downloaded models, runtime binaries, CUDA libraries, Python, packages, and external services have their own terms; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 This repository's notices are informational, not legal advice, and do not guarantee that any particular distribution or use is lawful in every jurisdiction. Review upstream terms and obtain qualified legal advice before commercial distribution or other material use.

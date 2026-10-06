@@ -1,9 +1,11 @@
+import fnmatch
 import hashlib
 import os
 import runpy
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -89,6 +91,24 @@ class BonTests(unittest.TestCase):
         for package in packages:
             self.assertTrue(package["wheel"])
             self.assertRegex(package["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_reuse_manifest_scopes_mit_to_bon_authored_files(self):
+        manifest = tomllib.loads((ROOT / "REUSE.toml").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["version"], 1)
+        self.assertEqual(manifest["annotations"][0]["precedence"], "closest")
+        self.assertEqual(manifest["annotations"][0]["SPDX-License-Identifier"], "MIT")
+        self.assertEqual(manifest["annotations"][0]["SPDX-FileCopyrightText"], "2026 Cemal Burak Ay")
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True
+        ).stdout.decode().split("\0")
+        patterns = manifest["annotations"][0]["path"]
+        for relative_path in filter(None, tracked):
+            if relative_path == "REUSE.toml" or relative_path == "LICENSE" or relative_path.startswith("LICENSES/"):
+                continue
+            self.assertTrue(any(fnmatch.fnmatchcase(relative_path, pattern) for pattern in patterns), relative_path)
+        license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        self.assertIn("MIT License", license_text)
+        self.assertIn("Copyright (c) 2026 Cemal Burak Ay", license_text)
 
     def test_model_hash_verification_and_marker(self):
         payload = b"Bon model integrity test"

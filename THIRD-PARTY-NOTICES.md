@@ -66,4 +66,4 @@ These actions run in GitHub-hosted CI; they are not included in Bon's end-user i
 
 ## No blanket relicensing
 
-The root [MIT license](LICENSE) applies to original Bon source and assets only. It does not grant rights to third-party model weights, CUDA libraries, runtime binaries, Python packages, project names, or marks. In particular, do not re-upload the downloaded model or Prism/NVIDIA binaries as if they were MIT-licensed Bon artifacts. Check each upstream license and applicable terms before redistribution.
+The root [MIT license](LICENSE) and [`REUSE.toml`](REUSE.toml) apply to original Bon-authored source and assets only. They do not grant rights to third-party model weights, CUDA libraries, runtime binaries, Python packages, project names, or marks. In particular, do not re-upload the downloaded model or Prism/NVIDIA binaries as if they were MIT-licensed Bon artifacts. The REUSE format describes file-level copyright/license metadata; it is not a dependency-license compatibility audit ([REUSE FAQ](https://reuse.software/faq/)). Check each upstream license and applicable terms before redistribution.

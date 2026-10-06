@@ -33,6 +33,7 @@ GPU/model smoke tests require the downloaded model and compatible hardware, so s
 
 - Keep application code, commands, messages, and build scripts in English. The tracked assistant instruction documents under `.instructions/` intentionally remain Turkish/English according to their teaching purpose.
 - Update `tools/tool-lock.json`, `THIRD-PARTY-NOTICES.md`, and the relevant guides when changing a downloaded tool, model, runtime, or package.
+- Before committing any vendored third-party file, add its actual copyright and SPDX license metadata (or a more-specific `REUSE.toml` entry) so the root Bon MIT fallback does not mislabel it.
 - Do not copy upstream model logos, code, or license text without preserving attribution and applicable notices.
 - Make any external network call, prompt exposure, or persistence change explicit in `PRIVACY.md` and the user guide.
 - Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Pull requests may be declined if ownership, license compatibility, or distribution rights are unclear.

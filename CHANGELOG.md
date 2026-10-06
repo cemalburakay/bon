@@ -13,6 +13,7 @@ Notable changes to Bon are recorded here. This project has not made a tagged pub
 - Model-selected `web_search` tool calls, explicit `/search` and `/web` commands, and source links.
 - One-shot-by-default session behavior, opt-in history, configurable context and slot count, and deterministic sampling settings.
 - GitHub community, security, contribution, citation, privacy, setup, user, and third-party licensing documentation.
+- A REUSE/SPDX file-level licensing manifest for Bon-authored materials, separate from external component terms.
 
 ### Changed
 

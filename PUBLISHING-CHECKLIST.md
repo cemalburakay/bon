@@ -4,6 +4,7 @@ Repository files cannot enable GitHub account/repository settings by themselves.
 
 - [ ] Set a clear repository description and relevant topics; verify the repository name/URL and default branch.
 - [ ] Review the MIT copyright holder and confirm that the named holder has rights to license every Bon-authored file and asset.
+- [ ] Run the REUSE compliance checker against `REUSE.toml`; confirm it describes Bon-authored files only and is not presented as a third-party dependency license audit.
 - [ ] Review [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md), the upstream model license, Prism release licensing, NVIDIA CUDA terms, and any applicable redistribution conditions. Obtain legal review if distributing binaries or model files.
 - [ ] Run the setup and `bon` smoke test on a clean Windows 11 x64 machine; confirm downloaded versions, checksums where pinned, and model sizes match `tools/tool-lock.json`.
 - [ ] Update [`RELEASE-NOTES.md`](RELEASE-NOTES.md), create a version/tag, and confirm the release files do not contain model weights, CUDA DLLs, tool archives, `.venv/`, `.models/`, credentials, or private logs.
