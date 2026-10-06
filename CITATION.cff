@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use Bon, please cite it as software and cite the upstream model and runtime separately."
+title: "Bon"
+authors:
+  - family-names: "Ay"
+    given-names: "Cemal Burak"
+type: software

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="160" viewBox="0 0 640 160" role="img" aria-labelledby="title desc">
+  <title id="title">Bon</title>
+  <desc id="desc">Bon, a local command-line assistant</desc>
+  <rect width="640" height="160" rx="28" fill="#101827"/>
+  <rect x="24" y="24" width="112" height="112" rx="26" fill="#17334a" stroke="#5de0c1" stroke-width="4"/>
+  <path d="M57 52h35a20 20 0 0 1 0 40H57zm0 40h42a20 20 0 0 1 0 40H57z" fill="none" stroke="#f5f7fb" stroke-linecap="round" stroke-linejoin="round" stroke-width="11"/>
+  <circle cx="113" cy="121" r="5" fill="#f7c66a"/>
+  <text x="168" y="111" fill="#f5f7fb" font-family="Segoe UI, Arial, sans-serif" font-size="76" font-weight="650" letter-spacing="1">bon</text>
+  <text x="372" y="106" fill="#a9bbca" font-family="Segoe UI, Arial, sans-serif" font-size="18" letter-spacing="1.2">LOCAL CLI ASSISTANT</text>
+</svg>

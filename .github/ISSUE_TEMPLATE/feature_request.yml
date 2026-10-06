@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a focused improvement to Bon.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Explain what you are trying to do and what currently blocks you.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Tradeoffs and alternatives
+      description: Include privacy, setup, maintenance, GPU, or licensing considerations if relevant.
+    validations:
+      required: false
