@@ -7,6 +7,7 @@ This repository is being prepared for its first public release. Do not treat thi
 ### Intended contents
 
 - Bon, a Windows-first local inference REPL with portable, pinned setup.
+- Fully unattended setup with printed component terms and verified app-local Microsoft C++ DLLs; no global Python or C++ runtime installer.
 - `bon run <model>` for direct startup with a selected model tag.
 - The `bon2:27b-5gb` default Ternary-Bonsai 2 GGUF and an optional on-demand `bon2:27b-7gb` variant.
 - Optional model-selected DuckDuckGo web search, with source links and an explicit external-query privacy notice.
@@ -19,5 +20,5 @@ This repository is being prepared for its first public release. Do not treat thi
 - First setup needs internet and at least 9 GiB free disk space; the default model alone is about 5.95 GB.
 - An 8 GiB GPU is close to full utilization with `bon2:27b-5gb`; other hardware may need a smaller context or CPU fallback.
 - Search queries are sent to DuckDuckGo when search is invoked. Model/runtime and package downloads contact their upstream hosts.
-- The NVIDIA CUDA runtime components have separate NVIDIA terms and are not included under Bon's MIT license.
+- The NVIDIA CUDA and Microsoft runtime components and the WiX extractor retain separate upstream terms and are not included under Bon's MIT license. Review them before running the unattended installer.
 - Publish the reviewed source archive; retain the upstream legal files when installing locally. Ownership and other open rights questions are recorded in [LEGAL-REVIEW.md](LEGAL-REVIEW.md).

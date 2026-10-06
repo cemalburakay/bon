@@ -6,6 +6,7 @@ Notable changes to Bon are recorded here. This project has not made a tagged pub
 
 ### Added
 
+- Verified portable Visual C++ runtime DLLs and WiX extraction, removing an implicit dependency on a system-wide C++ runtime.
 - Portable Windows setup using pinned Python 3.12.10 embedded, an isolated `.venv`, and pinned inference/runtime downloads.
 - Local CLI chat with `bon2:27b-5gb` as the default model and optional on-demand `bon2:27b-7gb` downloads.
 - `bon run <model>` to start the REPL directly with a chosen model, downloading it if needed.
@@ -17,6 +18,7 @@ Notable changes to Bon are recorded here. This project has not made a tagged pub
 
 ### Changed
 
+- Made setup fully unattended with a printed upstream terms notice; moved default Hugging Face/Xet and virtualenv caches into `tools/.downloads/` and disabled pip bytecode compilation.
 - Audited reachable Git history and pinned license records; corrected embedded Python and CodeQL license scope, preserved model/runtime notices, and replaced automatic MIT glob coverage with an explicit file list.
 - Standardized the product name, launch command, Python entrypoint, model tags, and instruction filenames as `Bon`/`bon`.
 - Replaced the former shorthand model tags with `bon2:27b-5gb` and `bon2:27b-7gb` across the CLI and documentation.

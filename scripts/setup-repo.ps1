@@ -1,12 +1,13 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipPathRegistration,
-    [switch]$AcceptNvidiaCudaLicense
+    [switch]$SkipPathRegistration
 )
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $env:PYTHONDONTWRITEBYTECODE = '1'
+$env:PYTHONUTF8 = '1'
+$env:PYTHONUNBUFFERED = '1'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
@@ -25,6 +26,8 @@ $VenvRoot = Join-Path $RepoRoot '.venv'
 $VenvPythonExe = Join-Path $VenvRoot 'Scripts\python.exe'
 $PrismRoot = Join-Path $ToolsRoot $ToolLock.layout.runtime_dir
 $PrismServer = Join-Path $PrismRoot $ToolLock.runtime.server_executable
+$MsvcRoot = Join-Path $ToolsRoot $ToolLock.layout.msvc_dir
+$WixRoot = Join-Path $ToolsRoot $ToolLock.layout.wix_dir
 $PythonVersion = $ToolLock.python.version
 $PythonArchiveName = $ToolLock.python.embedded_archive
 $PythonArchiveUrl = "https://www.python.org/ftp/python/$PythonVersion/$PythonArchiveName"
@@ -127,11 +130,68 @@ function Install-PinnedWheels {
     $WheelPaths = @($Packages | ForEach-Object { Get-PinnedWheel -Package $_ })
     $PreviousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    & $PythonExecutable -m pip install --disable-pip-version-check --no-deps --no-index --force-reinstall @WheelPaths
+    & $PythonExecutable -m pip install --disable-pip-version-check --no-compile --no-deps --no-index --force-reinstall @WheelPaths
     $InstallExitCode = $LASTEXITCODE
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($InstallExitCode -ne 0) {
         throw "Pinned wheel installation failed for $EnvironmentName (exit code $InstallExitCode)."
+    }
+}
+
+function Install-PortableMsvcRuntime {
+    # Extract the signed redistributable; never run its system-wide installer.
+    $MissingFiles = @($ToolLock.msvc_runtime.files | Where-Object {
+        $FilePath = Join-Path $MsvcRoot $_.file
+        -not (Test-Path -LiteralPath $FilePath -PathType Leaf) -or
+            (Get-Sha256 -Path $FilePath) -ne $_.sha256
+    })
+    if ($MissingFiles.Count -gt 0) {
+        $WixLock = $ToolLock.wix
+        $DarkExe = Join-Path $WixRoot $WixLock.extractor
+        if (-not (Test-Path -LiteralPath $DarkExe -PathType Leaf) -or
+            (Get-Sha256 -Path $DarkExe) -ne $WixLock.extractor_sha256) {
+            $WixArchive = Get-VerifiedAsset -Name $WixLock.archive -Uri $WixLock.url -ExpectedSha256 $WixLock.sha256
+            Expand-Archive -Path $WixArchive -DestinationPath $WixRoot -Force
+        }
+        if ((Get-Sha256 -Path $DarkExe) -ne $WixLock.extractor_sha256) {
+            throw 'The portable WiX extractor failed its checksum check.'
+        }
+        $MsvcLock = $ToolLock.msvc_runtime
+        $MsvcArchive = Get-VerifiedAsset -Name $MsvcLock.archive -Uri $MsvcLock.url -ExpectedSha256 $MsvcLock.sha256
+        $Signature = Get-AuthenticodeSignature -LiteralPath $MsvcArchive
+        if ($Signature.Status -ne 'Valid' -or $Signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') {
+            throw 'The Visual C++ redistributable did not have a valid Microsoft signature.'
+        }
+        $ExtractionRoot = Join-Path $DownloadRoot "msvc-extract-$($MsvcLock.version)"
+        $RuntimeFiles = Join-Path $ExtractionRoot 'runtime-files'
+        New-Item -ItemType Directory -Path $ExtractionRoot, $RuntimeFiles -Force | Out-Null
+        Write-Host 'Extracting portable Visual C++ DLLs (no global installer or administrator access) ...'
+        & $DarkExe -nologo $MsvcArchive -x $ExtractionRoot
+        if ($LASTEXITCODE -ne 0) { throw 'WiX could not extract the Visual C++ redistributable.' }
+        $CabPath = Join-Path $ExtractionRoot $MsvcLock.cab
+        & (Join-Path $env:SystemRoot 'System32\expand.exe') '-F:*' $CabPath $RuntimeFiles | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not expand the Visual C++ runtime cabinet.' }
+        foreach ($File in $MsvcLock.files) {
+            $ExtractedFile = Join-Path $RuntimeFiles "$($File.file)_amd64"
+            if (-not (Test-Path -LiteralPath $ExtractedFile -PathType Leaf) -or
+                (Get-Sha256 -Path $ExtractedFile) -ne $File.sha256) {
+                throw "Extracted Visual C++ DLL failed its pinned checksum: $($File.file)"
+            }
+            Copy-Item -LiteralPath $ExtractedFile -Destination (Join-Path $MsvcRoot $File.file) -Force
+        }
+        Copy-Item -LiteralPath (Join-Path $ExtractionRoot 'UX\thm.wxl') -Destination (Join-Path $MsvcRoot 'vendor-license-reference.xml') -Force
+        [IO.File]::WriteAllText((Join-Path $MsvcRoot 'LICENSE-SOURCE.txt'),
+            "Microsoft Visual C++ Runtime $($MsvcLock.version)`r`nOriginal package: $($MsvcLock.url)`r`nApplicable terms: $($MsvcLock.license_url)`r`nThese binaries are not licensed under Bon's MIT license.`r`n", [Text.Encoding]::UTF8)
+    } else {
+        Write-Host 'The pinned portable Visual C++ runtime is already installed.'
+    }
+    # App-local DLLs must exist before any inference executable is started.
+    foreach ($File in $ToolLock.msvc_runtime.files) {
+        $Destination = Join-Path $PrismRoot $File.file
+        if (-not (Test-Path -LiteralPath $Destination -PathType Leaf) -or
+            (Get-Sha256 -Path $Destination) -ne $File.sha256) {
+            Copy-Item -LiteralPath (Join-Path $MsvcRoot $File.file) -Destination $Destination -Force
+        }
     }
 }
 
@@ -163,6 +223,17 @@ try {
     if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitOperatingSystem) {
         throw 'This setup currently requires 64-bit Windows.'
     }
+    # Do not resolve a same-named module from a parent PowerShell's module path.
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1') -ErrorAction Stop
+    Write-Host 'UNATTENDED SETUP: upstream terms are acknowledged and accepted by the installing operator.'
+    Write-Host 'Run this setup only if you accept the following applicable terms; no acceptance prompt will be shown.'
+    Write-Host 'Bon source: MIT (LICENSE). External components retain their own licenses; see THIRD-PARTY-NOTICES.md.'
+    Write-Host 'NVIDIA CUDA 12.4: https://docs.nvidia.com/cuda/archive/12.4.0/eula/index.html'
+    Write-Host "Microsoft Visual C++ Runtime: $($ToolLock.msvc_runtime.license_url)"
+    Write-Host "WiX extractor (MS-RL): $($ToolLock.wix.license_url)"
+    Write-Host 'Python: https://docs.python.org/3.12/license.html'
+    Write-Host 'Bonsai model (Apache-2.0): https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf'
+    Write-Host 'This notice does not waive upstream obligations, certify redistribution rights, or record individual consent.'
     foreach ($RequiredFile in @('bon.cmd', 'setup-repo.cmd', 'tools\tool-lock.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot $RequiredFile) -PathType Leaf)) {
             throw "Required source file is missing: $RequiredFile"
@@ -184,7 +255,8 @@ try {
     }
 
     $ModelRoot = Join-Path $RepoRoot $ToolLock.layout.model_dir
-    New-Item -ItemType Directory -Path $ToolsRoot, $DownloadRoot, $PythonRoot, $PrismRoot, $ModelRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $ToolsRoot, $DownloadRoot, $PythonRoot, $PrismRoot, $ModelRoot, $MsvcRoot, $WixRoot -Force | Out-Null
+    Install-PortableMsvcRuntime
 
     $PythonVersionText = ''
     if (Test-Path -LiteralPath $PythonExe -PathType Leaf) {
@@ -280,7 +352,7 @@ try {
     }
     if (-not $VenvEntry) {
         Write-Host 'Creating the independent repo-local .venv ...'
-        & $PythonExe -m virtualenv --no-download --no-seed --copies --python $PythonExe $VenvRoot
+        & $PythonExe -m virtualenv --no-download --no-seed --copies --app-data (Join-Path $DownloadRoot 'virtualenv') --python $PythonExe $VenvRoot
         if ($LASTEXITCODE -ne 0) { throw "Could not create .venv (exit code $LASTEXITCODE)." }
     }
     if (-not (Test-Path -LiteralPath $VenvPythonExe -PathType Leaf)) {
@@ -333,15 +405,6 @@ try {
     }
     $ErrorActionPreference = $PreviousErrorActionPreference
     if ($PrismExitCode -ne 0 -or $PrismVersion -notmatch [regex]::Escape($ToolLock.runtime.version_contains)) {
-        if (-not $AcceptNvidiaCudaLicense) {
-            Write-Host 'The pinned Prism CUDA runtime bundle includes NVIDIA CUDA 12.4 runtime libraries.'
-            Write-Host 'Review the applicable NVIDIA terms before installation:'
-            Write-Host 'https://docs.nvidia.com/cuda/archive/12.4.0/eula/index.html'
-            $LicenseDecision = Read-Host 'Type ACCEPT to continue after reviewing the NVIDIA terms'
-            if ($LicenseDecision -cne 'ACCEPT') {
-                throw 'NVIDIA CUDA runtime installation was not accepted; setup stopped before downloading runtime binaries.'
-            }
-        }
         $PrismBinaryLock = $ToolLock.runtime.archives[0]
         $CudaRuntimeLock = $ToolLock.runtime.archives[1]
         $PrismArchive = Get-VerifiedAsset -Name $PrismBinaryLock.filename -Uri "$PrismReleaseUrl/$($PrismBinaryLock.filename)" -ExpectedSha256 $PrismBinaryLock.sha256

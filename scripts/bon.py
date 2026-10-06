@@ -16,6 +16,10 @@ try:
     SERVER=ROOT/'tools'/TOOL_LOCK['layout']['runtime_dir']/TOOL_LOCK['runtime']['server_executable']
 except (OSError,KeyError,TypeError,ValueError) as error:
     raise SystemExit(f'[ERROR] Could not load the pinned tool lock: {TOOL_LOCK_FILE} ({error})')
+# Set cache roots before importing huggingface_hub; honor explicit operator overrides.
+HF_CACHE_ROOT=Path(os.environ.setdefault('HF_HOME',str(ROOT/'tools'/TOOL_LOCK['layout']['download_dir']/'huggingface')))
+os.environ.setdefault('HF_HUB_CACHE',str(HF_CACHE_ROOT/'hub'))
+os.environ.setdefault('HF_XET_CACHE',str(HF_CACHE_ROOT/'xet'))
 DEFAULT_PORT=8080; PORT=DEFAULT_PORT
 # The 5 GB model keeps f16 KV (no quality-affecting KV quantization). PQ2_0 leaves
 # very little headroom on this 8 GiB GPU, so the 7 GB model uses the measured q4_0 KV

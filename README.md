@@ -20,10 +20,10 @@ Bon is a personal-use CLI, not a hosted service, production platform, compliance
 
 ## Quick start
 
-Requirements: 64-bit Windows 11, PowerShell, internet access for initial setup, and at least 9 GiB of free disk space. An NVIDIA GPU with 8 GiB VRAM is the tested target; other GPUs and CPU-only execution are not guaranteed to have the same performance or memory fit.
+Requirements: 64-bit Windows 11 with its built-in PowerShell/.NET tools, internet access for initial setup, and at least 9 GiB of free disk space. An NVIDIA GPU with a compatible installed driver and 8 GiB VRAM is the tested target; other GPUs and CPU-only execution are not guaranteed to have the same performance or memory fit. No system Python or global Visual C++ runtime installation is required.
 
-1. Run `setup-repo.cmd` from the repository directory.
-2. Review the NVIDIA CUDA 12.4 terms shown by setup and type `ACCEPT` to continue. For a deliberate non-interactive acceptance, pass `-AcceptNvidiaCudaLicense`.
+1. Review the [setup terms and component notices](SETUP-GUIDE.md#unattended-installation-and-terms). Run `setup-repo.cmd` only if you accept the applicable upstream terms.
+2. Setup is fully unattended: it prints the terms notice, downloads and verifies the pinned components, and never requests an acceptance response.
 3. Open a new terminal if setup added the repository directory to your user PATH.
 4. Run `bon` (or `bon.cmd` from this directory). To choose a model explicitly, use `bon run bon2:27b-5gb` or `bon run bon2:27b-7gb`.
 
@@ -36,7 +36,7 @@ The default `bon2:27b-5gb` GGUF is about 5.95 GB and is downloaded from Hugging 
 - Uses a text-only chat interface. The underlying model repository also describes a vision tower, but Bon does not expose image input.
 - Offers optional `bon2:27b-7gb` installation and model switching.
 - Gives the model one `web_search` function. A model-selected search or explicit `/search` or `/web` command sends the extracted query to DuckDuckGo; it does not make all prompts local by magic. Search results are untrusted external data and are shown with source links.
-- Keeps downloaded models in `.models/`; tools and Python packages live under ignored `tools/` and `.venv/`. None of those large runtime assets belong in Git.
+- Keeps downloaded models in `.models/`; tools and Python packages live under ignored `tools/` and `.venv/`. Download and environment caches default to `tools/.downloads/`. None of those large runtime assets belong in Git.
 
 Bon does not intentionally collect telemetry. Hugging Face receives download requests during setup/model pulls. DuckDuckGo receives a search query only when a search is invoked. See [PRIVACY.md](PRIVACY.md) and the [DuckDuckGo terms](https://duckduckgo.com/terms).
 

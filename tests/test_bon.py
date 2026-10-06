@@ -32,6 +32,34 @@ class BonTests(unittest.TestCase):
         self.assertEqual(self.app["slot_context_for"]("bon2:27b-5gb", slots=2), 17_408)
         self.assertEqual(self.app["max_input_for"]("bon2:27b-5gb", slots=2), 13_312)
 
+    def test_huggingface_caches_default_to_repo_and_allow_overrides(self):
+        cache_keys = ("HF_HOME", "HF_HUB_CACHE", "HF_XET_CACHE")
+        with patch.dict(os.environ, {}, clear=False):
+            for key in cache_keys:
+                os.environ.pop(key, None)
+            app = runpy.run_path(str(SOURCE))
+            expected = ROOT / "tools" / ".downloads" / "huggingface"
+            self.assertEqual(app["HF_CACHE_ROOT"], expected)
+            self.assertEqual(Path(os.environ["HF_HUB_CACHE"]), expected / "hub")
+            self.assertEqual(Path(os.environ["HF_XET_CACHE"]), expected / "xet")
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"HF_HOME": directory}, clear=False):
+                os.environ.pop("HF_HUB_CACHE", None)
+                os.environ.pop("HF_XET_CACHE", None)
+                app = runpy.run_path(str(SOURCE))
+                self.assertEqual(app["HF_CACHE_ROOT"], Path(directory))
+                self.assertEqual(Path(os.environ["HF_HUB_CACHE"]), Path(directory) / "hub")
+
+    def test_native_bootstrap_artifacts_and_dlls_are_hash_pinned(self):
+        lock = self.app["TOOL_LOCK"]
+        for component in ("wix", "msvc_runtime"):
+            self.assertTrue(lock[component]["url"].startswith("https://"))
+            self.assertRegex(lock[component]["sha256"], r"^[0-9A-Fa-f]{64}$")
+        dlls = {file["file"]: file for file in lock["msvc_runtime"]["files"]}
+        self.assertTrue({"msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"} <= dlls.keys())
+        for file in dlls.values():
+            self.assertRegex(file["sha256"], r"^[0-9A-Fa-f]{64}$")
+
     def test_cli_help_uses_bon_brand(self):
         result = subprocess.run(
             [sys.executable, str(SOURCE), "--help"],
