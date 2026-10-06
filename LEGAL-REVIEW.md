@@ -23,7 +23,7 @@ The pinned model notice identifies Prism ML, Inc. and credits Alibaba Cloud/Qwen
 
 At the baseline, all reachable Git history contained 78 distinct blob records; the largest was 43,944 bytes. The history inventory found no model weights, native binaries, wheel/ZIP archives, runtime directories, or Python bytecode paths. A targeted text scan found no private-key headers or common GitHub/Hugging Face token patterns. These checks are not a complete secret or provenance audit.
 
-The history contains one author-name identity and one author email. The author name differs from the selected copyright holder, Cemal Burak Ay. Git metadata neither proves nor disproves copyright ownership. Confirm the holder's authority and whether the commit identity/email should become public before publishing history. The review does not print the email here and does not rewrite history.
+At that baseline, the history contained one author-name identity and one author email. That author name differed from the selected copyright holder, Cemal Burak Ay. Git metadata neither proves nor disproves copyright ownership. Confirm the holder's authority and whether commit identities/emails should become public before publishing history. Later commits use the maintainer's requested identity; historical metadata was not rewritten. The review does not print historical email addresses here.
 
 ## Matters that documents cannot resolve
 

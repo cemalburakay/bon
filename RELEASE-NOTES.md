@@ -1,6 +1,6 @@
 # Release notes
 
-## Draft for the first public release — not published
+## Draft for the first tagged software release — no tag published
 
 The source repository is [cemalburakay/bon](https://github.com/cemalburakay/bon), with `dev` as the default development branch. Public source publication is separate from a tagged software release. Do not treat this draft as a tagged or supported release. Before creating a release, replace this heading with the actual version and date, rerun the setup and smoke tests on a clean Windows machine, and complete [PUBLISHING-CHECKLIST.md](PUBLISHING-CHECKLIST.md).
 

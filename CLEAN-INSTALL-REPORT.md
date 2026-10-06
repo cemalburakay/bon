@@ -64,7 +64,7 @@ These are one warmed-server observation, not a cold-start latency or a promise o
 
 Reran plain `setup-repo.cmd` after the smoke test: exit code **0**, **5.86 seconds**, no questions, and no optional model download. Cached verified artifacts were reused; pinned Python packages were reinstalled from local wheels. The generated installations remain present so `bon` is immediately usable; they remain ignored by Git.
 
-The local branch was renamed from `main` to `dev`, preserving prior commits. Requested Git author/contact/username settings were written only to this checkout's `.git/config`; they are not installed for future clone users or applied globally. `github.user` is local metadata, not authentication. CI supports both `dev` and `main`. No GitHub repository was created, published, or pushed.
+The local branch was renamed from `main` to `dev`, preserving prior commits. Requested Git author/contact/username settings were written only to this checkout's `.git/config`; they are not installed for future clone users or applied globally. `github.user` is local metadata, not authentication. CI supports both `dev` and `main`. At this bootstrap checkpoint no GitHub repository had been created, published, or pushed. The subsequent source publication is recorded separately in [PUBLISHING-REPORT.md](PUBLISHING-REPORT.md).
 
 ## Reproduce
 

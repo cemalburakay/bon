@@ -81,6 +81,7 @@ Sampling settings use temperature `0`, top-k `1`, and a fixed seed. This is dete
 - [Security policy](SECURITY.md)
 - [Community code of conduct](CODE_OF_CONDUCT.md)
 - [Publishing checklist](PUBLISHING-CHECKLIST.md)
+- [GitHub publication execution log](PUBLISHING-REPORT.md)
 - [Licensing review and remaining rights questions](LEGAL-REVIEW.md)
 
 The current CLI loads `.instructions/bon-general-assistant.md`. The additional math and English-tutor instruction files are retained as prompt templates; this build does not expose a command to switch between them.

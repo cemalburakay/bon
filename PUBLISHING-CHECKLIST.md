@@ -4,6 +4,8 @@ Repository files cannot enable GitHub account/repository settings by themselves.
 
 This checklist prepares a source-only release. Read [LEGAL-REVIEW.md](LEGAL-REVIEW.md), resolve its ownership and distribution questions, and keep the review separate from a lawyer's release clearance. Git ignore rules alone do not exclude files from a manually created workspace ZIP or from earlier commits.
 
+The source repository was published at [cemalburakay/bon](https://github.com/cemalburakay/bon) on 2026-10-06. [PUBLISHING-REPORT.md](PUBLISHING-REPORT.md) records the verified steps. This does not mean every release-policy item below is complete or that a tagged software release has been made.
+
 - [ ] Set a clear repository description and relevant topics; verify the repository name/URL and default branch.
 - [ ] Review the MIT copyright holder and confirm that the named holder has rights to license every Bon-authored file and asset.
 - [ ] Confirm contributor/employer permissions and review public Git author/email metadata, including the difference identified in the review. Inspect all history that will be pushed.
