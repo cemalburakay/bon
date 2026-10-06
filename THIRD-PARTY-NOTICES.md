@@ -46,7 +46,7 @@ License identifiers below are taken from the pinned distributions' package metad
 | typing-extensions | 4.16.0 | PSF-2.0 | [python/typing_extensions](https://github.com/python/typing_extensions) |
 | virtualenv | 21.14.5 | MIT | [pypa/virtualenv](https://github.com/pypa/virtualenv) |
 
-The package versions are pinned, but the current setup does not hash-pin every Python wheel. Review the lock and package release artifacts before relying on this inventory as a software bill of materials. Transitive/native package dependencies can carry additional notices.
+The Windows x64 / CPython 3.12 bootstrap and application wheels are pinned by filename and SHA-256 in `tools/tool-lock.json`. Setup checks the requested wheel against the versioned PyPI metadata, verifies its downloaded bytes, and installs the local wheel with package-index access disabled. The two model files are pinned by Hugging Face revision, expected size, and LFS SHA-256; Bon verifies the digest on first use and reuses a local integrity marker while the file's size and modification time remain unchanged. Review transitive/native package notices and upstream releases before relying on this inventory as a full SBOM.
 
 The pinned Windows Prism release's `llama.exe licenses` command was inspected for this notice and listed llama.cpp, cpp-httplib, BoringSSL, Go support code, and jsonhpp. Re-inspect that command and Prism's source `licenses/` directory whenever the runtime release changes. The CUDA archive is a separate asset and its NVIDIA terms do not appear in that command.
 

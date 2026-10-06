@@ -50,7 +50,7 @@ Or from inside the REPL:
 /pull bon2:27b-7gb
 ```
 
-The model file is saved to `.models/`, which is excluded from Git. Allow extra disk space and expect increased VRAM pressure.
+The model file is saved to `.models/`, which is excluded from Git. Bon checks its pinned SHA-256 the first time it is used; later launches skip a full re-hash while file size and modification time are unchanged. Allow extra disk space and expect increased VRAM pressure.
 
 ## Portable layout
 

@@ -91,6 +91,50 @@ function Get-VerifiedAsset {
     return Get-VerifiedDownload -Uri $Uri -Destination $DownloadedAsset -ExpectedSha256 $ExpectedSha256
 }
 
+function Get-PinnedWheel {
+    param([Parameter(Mandatory = $true)][object]$Package)
+
+    foreach ($Property in @('name', 'version', 'wheel', 'sha256')) {
+        if ([string]::IsNullOrWhiteSpace([string]$Package.$Property)) {
+            throw "The tool lock is missing '$Property' for package '$($Package.name)'."
+        }
+    }
+    $WheelPath = Join-Path $DownloadRoot $Package.wheel
+    if (Test-Path -LiteralPath $WheelPath -PathType Leaf) {
+        if ((Get-Sha256 -Path $WheelPath) -eq $Package.sha256.ToUpperInvariant()) {
+            return $WheelPath
+        }
+        Write-Warning "Ignoring a cached wheel with an unexpected checksum: $WheelPath"
+    }
+
+    $PackageName = [Uri]::EscapeDataString([string]$Package.name)
+    $PackageVersion = [Uri]::EscapeDataString([string]$Package.version)
+    $Metadata = Invoke-RestMethod -Uri "https://pypi.org/pypi/$PackageName/$PackageVersion/json" -TimeoutSec 60
+    $Wheel = $Metadata.urls | Where-Object { $_.filename -eq $Package.wheel } | Select-Object -First 1
+    if (-not $Wheel -or $Wheel.digests.sha256 -ne $Package.sha256) {
+        throw "PyPI metadata did not match the pinned wheel and SHA-256 for $($Package.name)==$($Package.version)."
+    }
+    return Get-VerifiedDownload -Uri $Wheel.url -Destination $WheelPath -ExpectedSha256 $Package.sha256
+}
+
+function Install-PinnedWheels {
+    param(
+        [Parameter(Mandatory = $true)][string]$PythonExecutable,
+        [Parameter(Mandatory = $true)][object[]]$Packages,
+        [Parameter(Mandatory = $true)][string]$EnvironmentName
+    )
+
+    $WheelPaths = @($Packages | ForEach-Object { Get-PinnedWheel -Package $_ })
+    $PreviousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $PythonExecutable -m pip install --disable-pip-version-check --no-deps --no-index --force-reinstall @WheelPaths
+    $InstallExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $PreviousErrorActionPreference
+    if ($InstallExitCode -ne 0) {
+        throw "Pinned wheel installation failed for $EnvironmentName (exit code $InstallExitCode)."
+    }
+}
+
 function Add-RepositoryToUserPath {
     $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     $PathEntries = @()
@@ -207,14 +251,8 @@ try {
         throw "Could not bootstrap pip from the pinned embedded wheel: $PipVersionText"
     }
 
-    Write-Host 'Checking the pinned virtual-environment bootstrap packages ...'
-    $PreviousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    $BootstrapSpecs = @($ToolLock.bootstrap_packages | ForEach-Object { "$($_.name)==$($_.version)" })
-    & $PythonExe -m pip install --disable-pip-version-check --no-deps @BootstrapSpecs
-    $PipExitCode = $LASTEXITCODE
-    $ErrorActionPreference = $PreviousErrorActionPreference
-    if ($PipExitCode -ne 0) { throw "Virtual-environment bootstrap installation failed with exit code $PipExitCode." }
+    Write-Host 'Verifying and installing pinned virtual-environment bootstrap wheels ...'
+    Install-PinnedWheels -PythonExecutable $PythonExe -Packages $ToolLock.bootstrap_packages -EnvironmentName 'the embedded Python bootstrap'
 
     $VenvEntry = Get-Item -LiteralPath $VenvRoot -Force -ErrorAction SilentlyContinue
     if ($VenvEntry -and (($VenvEntry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
@@ -274,14 +312,8 @@ try {
         throw "The .venv failed bytecode or portable-path isolation checks: $($VenvIsolation -join '; ')"
     }
 
-    Write-Host 'Installing the pinned application dependencies into .venv ...'
-    $PreviousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    $PackageSpecs = @($ToolLock.python_packages | ForEach-Object { "$($_.name)==$($_.version)" })
-    & $VenvPythonExe -m pip install --disable-pip-version-check --no-deps @PackageSpecs
-    $PipExitCode = $LASTEXITCODE
-    $ErrorActionPreference = $PreviousErrorActionPreference
-    if ($PipExitCode -ne 0) { throw "Python package installation failed with exit code $PipExitCode." }
+    Write-Host 'Verifying and installing pinned application wheels into .venv ...'
+    Install-PinnedWheels -PythonExecutable $VenvPythonExe -Packages $ToolLock.python_packages -EnvironmentName '.venv'
     $ErrorActionPreference = 'Continue'
     & $VenvPythonExe -c "import huggingface_hub; print('huggingface_hub', huggingface_hub.__version__)"
     $HubImportExitCode = $LASTEXITCODE

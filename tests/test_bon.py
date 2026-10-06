@@ -1,7 +1,9 @@
+import hashlib
 import os
 import runpy
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -81,6 +83,37 @@ class BonTests(unittest.TestCase):
             ensure("bon2:27b-5gb", "bon2:27b-7gb")
         with self.assertRaises(RuntimeError):
             ensure(None, "bon2:27b-7gb")
+
+    def test_all_python_wheels_are_hash_pinned(self):
+        packages = self.app["TOOL_LOCK"]["bootstrap_packages"] + self.app["TOOL_LOCK"]["python_packages"]
+        for package in packages:
+            self.assertTrue(package["wheel"])
+            self.assertRegex(package["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_model_hash_verification_and_marker(self):
+        payload = b"Bon model integrity test"
+        expected = hashlib.sha256(payload).hexdigest()
+        app_globals = self.app["verify_model_integrity"].__globals__
+        original_work = app_globals["WORK"]
+        original_marker_dir = app_globals["MODEL_INTEGRITY_DIR"]
+        original_specs = app_globals["MODEL_SPECS"]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            model_path = root / "sample.gguf"
+            model_path.write_bytes(payload)
+            app_globals["WORK"] = root
+            app_globals["MODEL_INTEGRITY_DIR"] = root / ".integrity"
+            app_globals["MODEL_SPECS"] = {"sample": {"sha256": expected}}
+            try:
+                self.app["verify_model_integrity"]("sample", model_path)
+                self.assertTrue((root / ".integrity" / "sample.json").is_file())
+                model_path.write_bytes(b"altered model bytes")
+                with self.assertRaises(RuntimeError):
+                    self.app["verify_model_integrity"]("sample", model_path)
+            finally:
+                app_globals["WORK"] = original_work
+                app_globals["MODEL_INTEGRITY_DIR"] = original_marker_dir
+                app_globals["MODEL_SPECS"] = original_specs
 
 
 if __name__ == "__main__":

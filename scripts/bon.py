@@ -1,6 +1,6 @@
 import sys
 sys.dont_write_bytecode=True
-import html as html_lib, json, os, re, socket, subprocess, time, urllib.error, urllib.request, uuid
+import hashlib, html as html_lib, json, os, re, socket, subprocess, time, urllib.error, urllib.request, uuid
 from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, quote_plus, urlsplit
@@ -21,6 +21,7 @@ DEFAULT_PORT=8080; PORT=DEFAULT_PORT
 # very little headroom on this 8 GiB GPU, so the 7 GB model uses the measured q4_0 KV
 # path; the Prism runtime requires Flash Attention for that path.
 INSTRUCTIONS_FILE=ROOT/TOOL_LOCK['layout']['instructions_dir']/'bon-general-assistant.md'
+MODEL_INTEGRITY_DIR=WORK/'.integrity'
 DETERMINISTIC_SEED=42
 def fail(m): raise SystemExit(f'\n[ERROR] {m}\n')
 # Performance mode: keep the model and KV cache on the GPU. A 262K context is
@@ -235,6 +236,31 @@ def prepare():
     WORK.mkdir(exist_ok=True)
     if not SERVER.is_file():
         fail(f'Portable inference runtime is missing: {SERVER}. Run setup-repo.cmd first.')
+def sha256_file(path):
+    digest=hashlib.sha256()
+    with Path(path).open('rb') as source:
+        for block in iter(lambda:source.read(8*1024*1024),b''):
+            digest.update(block)
+    return digest.hexdigest()
+def verify_model_integrity(tag,path):
+    spec=MODEL_SPECS[tag]
+    model_stat=path.stat()
+    expected_sha256=spec['sha256'].casefold()
+    marker=MODEL_INTEGRITY_DIR/f'{tag.replace(":","-")}.json'
+    try:
+        cached=json.loads(marker.read_text(encoding='utf-8'))
+        if cached.get('sha256')==expected_sha256 and cached.get('size')==model_stat.st_size and cached.get('mtime_ns')==model_stat.st_mtime_ns:
+            return
+    except (OSError,ValueError,TypeError,AttributeError,json.JSONDecodeError):
+        pass
+    actual_sha256=sha256_file(path)
+    if actual_sha256.casefold()!=expected_sha256:
+        raise RuntimeError(f'Model SHA-256 mismatch for {tag}: expected {expected_sha256}, got {actual_sha256}.')
+    MODEL_INTEGRITY_DIR.mkdir(parents=True,exist_ok=True)
+    marker_data={'sha256':expected_sha256,'size':model_stat.st_size,'mtime_ns':model_stat.st_mtime_ns}
+    temporary_marker=marker.with_suffix('.tmp')
+    temporary_marker.write_text(json.dumps(marker_data),encoding='utf-8')
+    temporary_marker.replace(marker)
 def get_model(tag):
     if tag not in MODEL_SPECS:
         fail('Unknown model tag. Available: ' + ', '.join(MODEL_SPECS))
@@ -245,7 +271,11 @@ def get_model(tag):
     try:
         if local_model.is_file():
             if local_model.stat().st_size==expected_size:
-                return local_model
+                try:
+                    verify_model_integrity(tag,local_model)
+                    return local_model
+                except RuntimeError:
+                    force_download=True
             force_download=True
     except OSError:
         pass
@@ -255,6 +285,7 @@ def get_model(tag):
     downloaded=Path(hf_hub_download(spec['repo'],spec['file'],revision=spec['revision'],local_dir=WORK,force_download=force_download))
     if downloaded.stat().st_size!=expected_size:
         raise RuntimeError(f'Model download has an unexpected size: {downloaded.stat().st_size} bytes; expected {expected_size}.')
+    verify_model_integrity(tag,downloaded)
     return downloaded
 def pull_model(tag):
     tag=tag.casefold()
